@@ -66,7 +66,9 @@
     ]
   },
   "dependencies": {
-    "@actions/core": "^1.10.1"
+    "@actions/core": "^1.10.1",
+    "@actions/github": "^5.1.1",
+    "axios": "^1.6.5"
   },
   "devDependencies": {
     "@jest/globals": "^29.7.0",
@@ -84,7 +86,9 @@
     "make-coverage-badge": "^1.2.0",
     "prettier": "^3.3.2",
     "prettier-eslint": "^16.3.0",
+    "timezone-mock": "^1.3.6",
     "ts-jest": "^29.1.5",
+    "ts-node": "^10.9.2",
     "typescript": "^5.5.3"
   }
 }
