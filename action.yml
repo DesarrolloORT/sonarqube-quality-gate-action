@@ -1,24 +1,38 @@
-name: 'The name of your action here'
-description: 'Provide a description here'
-author: 'Your name or organization here'
-
-# Add your action's branding here. This will appear on the GitHub Marketplace.
+name: "SonarQube Quality Gate Report (Windows)"
+description: "Retrieve quality gate result of an analysis"
+author: "DesarrolloORT"
 branding:
-  icon: 'heart'
-  color: 'red'
-
-# Define your inputs here.
+  icon: "git-pull-request"
+  color: "purple"
 inputs:
-  milliseconds:
-    description: 'Your input description here'
+  sonar-project-key:
+    description: "SonarQube project key"
     required: true
-    default: '1000'
-
-# Define your outputs here.
+  sonar-host-url:
+    description: "SonarQube server URL"
+    required: true
+  sonar-token:
+    description: "SonarQube token for retrieving quality gate result"
+    required: true
+  github-token:
+    description: "GitHub Token for commenting on the pull request - not required if `disable-pr-comment` is set to `true`"
+    required: false
+  disable-pr-comment:
+    description: "Disable commenting result on the pull request"
+    required: false
+    default: "false"
+  fail-on-quality-gate-error:
+    description: "Set the action status to failed when quality gate status is `ERROR`"
+    required: false
+    default: "false"
+  branch:
+    description: "Branch name to retrieve the quality gate result"
+    required: false
 outputs:
-  time:
-    description: 'Your output description here'
-
+  project-status:
+    description: "Project's quality gate status either as `OK` or `ERROR`"
+  quality-gate-result:
+    description: "Quality gate of the latest analysis in JSON format"
 runs:
   using: node20
   main: dist/index.js
