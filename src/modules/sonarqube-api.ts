@@ -1,5 +1,5 @@
-import axios from "axios";
-import { QualityGate } from "./models";
+import axios from 'axios'
+import { QualityGate } from './models'
 
 export const fetchQualityGate = async (
   url: string,
@@ -7,7 +7,7 @@ export const fetchQualityGate = async (
   token: string,
   branch?: string
 ): Promise<QualityGate> => {
-  const params = branch ? { projectKey, branch } : { projectKey };
+  const params = branch ? { projectKey, branch } : { projectKey }
 
   const response = await axios.get<QualityGate>(
     `${url}/api/qualitygates/project_status`,
@@ -15,10 +15,10 @@ export const fetchQualityGate = async (
       params,
       auth: {
         username: token,
-        password: "",
-      },
+        password: ''
+      }
     }
-  );
+  )
 
-  return response.data;
-};
+  return response.data
+}

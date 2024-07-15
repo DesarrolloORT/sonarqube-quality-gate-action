@@ -28,43 +28,36 @@ function findCommentPredicate(inputs: Inputs, comment: Comment): boolean {
   )
 }
 
-export async function findComment(inputs: Inputs): Promise<Comment | undefined> {
+export async function findComment(
+  inputs: Inputs
+): Promise<Comment | undefined> {
   const octokit = github.getOctokit(inputs.token)
   const [owner, repo] = inputs.repository.split('/')
 
   const parameters = {
-    owner: owner,
-    repo: repo,
+    owner,
+    repo,
     issue_number: inputs.issueNumber
   }
 
-  if (inputs.direction == 'first') {
-    for await (const {data: comments} of octokit.paginate.iterator(
+  if (inputs.direction === 'first') {
+    for await (const { data: comments } of octokit.paginate.iterator(
       octokit.rest.issues.listComments,
       parameters
     )) {
       // Search each page for the comment
-      const comment = comments.find(comment =>
-        findCommentPredicate(inputs, comment)
-      )
+      const comment = comments.find(comm => findCommentPredicate(inputs, comm))
       if (comment) return comment
     }
   } else {
-    // direction == 'last'
+    // direction === 'last'
     const comments = await octokit.paginate(
       octokit.rest.issues.listComments,
       parameters
     )
     comments.reverse()
-    const comment = comments.find(comment =>
-      findCommentPredicate(inputs, comment)
-    )
+    const comment = comments.find(comm => findCommentPredicate(inputs, comm))
     if (comment) return comment
   }
   return undefined
-}
-
-function getErrorMessage(error: unknown) {
-  if (error instanceof Error) return error.message
-  return String(error)
 }

@@ -1,38 +1,41 @@
-name: "SonarQube Quality Gate Report (Windows)"
-description: "Retrieve quality gate result of an analysis"
-author: "DesarrolloORT"
+name: 'SonarQube Quality Gate Report (Windows)'
+description: 'Retrieve quality gate result of an analysis'
+author: 'DesarrolloORT'
 branding:
-  icon: "git-pull-request"
-  color: "purple"
+  icon: 'git-pull-request'
+  color: 'purple'
 inputs:
   sonar-project-key:
-    description: "SonarQube project key"
+    description: 'SonarQube project key'
     required: true
   sonar-host-url:
-    description: "SonarQube server URL"
+    description: 'SonarQube server URL'
     required: true
   sonar-token:
-    description: "SonarQube token for retrieving quality gate result"
+    description: 'SonarQube token for retrieving quality gate result'
     required: true
   github-token:
-    description: "GitHub Token for commenting on the pull request - not required if `disable-pr-comment` is set to `true`"
+    description:
+      'GitHub Token for commenting on the pull request - not required if
+      `disable-pr-comment` is set to `true`'
     required: false
   disable-pr-comment:
-    description: "Disable commenting result on the pull request"
+    description: 'Disable commenting result on the pull request'
     required: false
-    default: "false"
+    default: 'false'
   fail-on-quality-gate-error:
-    description: "Set the action status to failed when quality gate status is `ERROR`"
+    description:
+      'Set the action status to failed when quality gate status is `ERROR`'
     required: false
-    default: "false"
+    default: 'false'
   branch:
-    description: "Branch name to retrieve the quality gate result"
+    description: 'Branch name to retrieve the quality gate result'
     required: false
 outputs:
   project-status:
     description: "Project's quality gate status either as `OK` or `ERROR`"
   quality-gate-result:
-    description: "Quality gate of the latest analysis in JSON format"
+    description: 'Quality gate of the latest analysis in JSON format'
 runs:
   using: node20
   main: dist/index.js
