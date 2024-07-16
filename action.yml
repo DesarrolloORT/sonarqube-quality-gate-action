@@ -1,4 +1,4 @@
-name: 'SonarQube Quality Gate Report (Windows)'
+name: 'SonarQube Quality Gate Report (cross-platform)'
 description: 'Retrieve quality gate result of an analysis'
 author: 'DesarrolloORT'
 branding:

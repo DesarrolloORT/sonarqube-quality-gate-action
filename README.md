@@ -1,7 +1,5 @@
 # SonarQube Quality Gate Check
 
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=sonarqube-quality-gate-action&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=sonarqube-quality-gate-action)
-
 Check quality gate result from latest analysis and report result in the pull request's comment.
 
 ![PR comment](https://user-images.githubusercontent.com/28344318/194283898-6f3f6466-d4a7-4f83-93a4-daef88b14777.png)
@@ -47,7 +45,7 @@ jobs:
   test:
     runs-on: windows-latest
     steps:
-      - uses: DesarrolloORT/sonarqube-quality-gate-windows@v1
+      - uses: DesarrolloORT/sonarqube-quality-gate-action@v1
         id: quality-gate-check
         with:
           sonar-project-key: ${{ secrets.SONAR_PROJECT_KEY }}
@@ -82,7 +80,7 @@ jobs:
       - name: Wait for the quality gate result
         run: sleep 5
 
-      - uses: DesarrolloORT/sonarqube-quality-gate-windows@v1
+      - uses: DesarrolloORT/sonarqube-quality-gate-action@v1
         id: quality-gate-check
         with:
           sonar-project-key: ${{ secrets.SONAR_PROJECT_KEY }}
