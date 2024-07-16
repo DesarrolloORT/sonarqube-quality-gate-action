@@ -33,7 +33,8 @@
     "package": "npx ncc build src/index.ts -o dist --source-map --license licenses.txt",
     "package:watch": "npm run package -- --watch",
     "test": "npx jest",
-    "all": "npm run format:write && npm run lint && npm run test && npm run coverage && npm run package"
+    "all": "npm run format:write && npm run lint && npm run test && npm run coverage && npm run package",
+    "update-tag": "git tag -fa v1 -m 'update v1 tag' && git push origin v1 --force"
   },
   "license": "MIT",
   "jest": {
