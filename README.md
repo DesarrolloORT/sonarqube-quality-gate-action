@@ -3,6 +3,8 @@
 Check quality gate result from latest analysis and report result in the pull
 request's comment.
 
+> This action replicates the action in [this repo](https://github.com/phwt/sonarqube-quality-gate-action) but was adapted to work on Linux, MacOS and Windows.
+
 ![PR comment](https://user-images.githubusercontent.com/28344318/194283898-6f3f6466-d4a7-4f83-93a4-daef88b14777.png)
 
 <!-- Generated with `npx action-docs --update-readme` -->
