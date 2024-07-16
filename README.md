@@ -1,6 +1,7 @@
 # SonarQube Quality Gate Check
 
-Check quality gate result from latest analysis and report result in the pull request's comment.
+Check quality gate result from latest analysis and report result in the pull
+request's comment.
 
 ![PR comment](https://user-images.githubusercontent.com/28344318/194283898-6f3f6466-d4a7-4f83-93a4-daef88b14777.png)
 
@@ -62,8 +63,8 @@ jobs:
 
 ### Check the results immediately after the scan
 
-Sometimes the results will not be available right away after the scan has finished.
-Make sure to add a defer step before retrieving the scan results.
+Sometimes the results will not be available right away after the scan has
+finished. Make sure to add a defer step before retrieving the scan results.
 
 ```yml
 name: Check quality gate result on pull request
