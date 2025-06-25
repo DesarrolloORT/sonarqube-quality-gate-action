@@ -177,4 +177,31 @@ describe('buildReport', () => {
 ###### _updated: 1/1/1970, 08:31:00 (UTC+0)_`
     expect(report).toBe(expectedReport)
   })
+
+  it('should handle condition without errorThreshold but with comparator', () => {
+    const qualityGateWithoutThreshold: QualityGate = {
+      projectStatus: {
+        status: 'OK',
+        conditions: [
+          {
+            status: 'OK',
+            metricKey: 'test_metric',
+            comparator: 'GT',
+            actualValue: '5'
+          }
+        ],
+        ignoredConditions: false
+      }
+    }
+
+    const result = buildReport(
+      qualityGateWithoutThreshold,
+      'project-key',
+      'https://example.com',
+      { eventName: 'pull_request', repo: { owner: 'test-owner', repo: 'test-repo' } } as any
+    )
+
+    expect(result).toContain('> (no threshold)')
+    expect(result).toContain('Test metric')
+  })
 })

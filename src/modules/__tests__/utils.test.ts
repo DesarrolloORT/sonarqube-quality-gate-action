@@ -22,7 +22,24 @@ describe('getStatusEmoji', () => {
   })
 
   test('should return question mark when status is `NONE`', () => {
-    expect(getStatusEmoji('NONE')).toBe(':grey_question:')
+    expect(getStatusEmoji('NONE')).toBe(':grey_question: None')
+  })
+
+  test('should return hourglass when status is `IN_PROGRESS`', () => {
+    expect(getStatusEmoji('IN_PROGRESS')).toBe(':hourglass_flowing_sand: In Progress')
+  })
+
+  test('should return clock when status is `PENDING`', () => {
+    expect(getStatusEmoji('PENDING')).toBe(':clock1: Pending')
+  })
+
+  test('should return question mark with warning for unknown status', () => {
+    const consoleSpy = jest.spyOn(console, 'warn').mockImplementation()
+    expect(getStatusEmoji('UNKNOWN_STATUS')).toBe(':grey_question:')
+    expect(consoleSpy).toHaveBeenCalledWith(
+      'Unknown status received: "UNKNOWN_STATUS". Defaulting to grey question mark.'
+    )
+    consoleSpy.mockRestore()
   })
 })
 
