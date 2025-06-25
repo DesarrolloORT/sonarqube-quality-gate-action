@@ -35380,6 +35380,9 @@ async function run() {
             githubToken: core.getInput('github-token')
         };
         const result = await (0, sonarqube_api_1.fetchQualityGate)(inputs.hostURL, inputs.projectKey, inputs.token, inputs.branch);
+        console.log('Quality gate fetch completed successfully');
+        console.log(`Project status: ${result.projectStatus.status}`);
+        console.log(`Number of conditions: ${result.projectStatus.conditions?.length || 0}`);
         core.setOutput('project-status', result.projectStatus.status);
         core.setOutput('quality-gate-result', JSON.stringify(result));
         const isPR = github.context.eventName === 'pull_request';
@@ -35522,19 +35525,40 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.buildReport = void 0;
 const utils_1 = __nccwpck_require__(2440);
 const buildRow = (condition) => {
+    // Handle missing or undefined values
+    const metricKey = condition.metricKey ?? 'Unknown';
+    const status = condition.status ?? 'UNKNOWN';
+    const actualValue = condition.actualValue ?? 'N/A';
+    const comparator = condition.comparator ?? '';
+    console.log(`Building row for metric: ${metricKey}, status: ${status}`);
+    // Handle errorThreshold - some conditions don't have this per API docs
+    let thresholdDisplay = 'N/A';
+    if (condition.errorThreshold) {
+        thresholdDisplay = `${(0, utils_1.getComparatorSymbol)(comparator)} ${condition.errorThreshold}`;
+    }
+    else if (comparator) {
+        thresholdDisplay = `${(0, utils_1.getComparatorSymbol)(comparator)} (no threshold)`;
+    }
     const rowValues = [
-        (0, utils_1.formatMetricKey)(condition.metricKey), // Metric
-        (0, utils_1.getStatusEmoji)(condition.status), // Status
-        (0, utils_1.formatStringNumber)(condition.actualValue), // Value
-        `${(0, utils_1.getComparatorSymbol)(condition.comparator)} ${condition.errorThreshold}` // Error Threshold
+        (0, utils_1.formatMetricKey)(metricKey), // Metric
+        (0, utils_1.getStatusEmoji)(status), // Status
+        (0, utils_1.formatStringNumber)(actualValue), // Value
+        thresholdDisplay // Error Threshold
     ];
     return `|${rowValues.join('|')}|`;
 };
 const buildReport = (result, hostURL, projectKey, context, branch) => {
     const projectURL = `${(0, utils_1.trimTrailingSlash)(hostURL)}/dashboard?id=${projectKey}${branch ? `&branch=${encodeURIComponent(branch)}` : ''}`;
     const projectStatus = (0, utils_1.getStatusEmoji)(result.projectStatus.status);
-    const resultTable = result.projectStatus.conditions.map(buildRow).join('\n');
+    // Handle case where conditions might be empty or missing
+    const conditions = result.projectStatus.conditions || [];
+    const resultTable = conditions.length > 0
+        ? conditions.map(buildRow).join('\n')
+        : '|No metrics available|:grey_question:|N/A|N/A|';
     const { value: updatedDate, offset: updatedOffset } = (0, utils_1.getCurrentDateTime)();
+    console.log(`Building report for project ${projectKey}`);
+    console.log(`Status: ${result.projectStatus.status}`);
+    console.log(`Number of conditions: ${conditions.length}`);
     return `### SonarQube Quality Gate Result
 - **Result**: ${projectStatus}${branch ? `\n- **Branch**: \`${branch}\`` : ''}
 - Triggered by @${context.actor} on \`${context.eventName}\`
@@ -35556,22 +35580,126 @@ exports.buildReport = buildReport;
 
 "use strict";
 
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.fetchQualityGate = void 0;
-const axios_1 = __importDefault(__nccwpck_require__(8757));
+const axios_1 = __importStar(__nccwpck_require__(8757));
+// Validate the response structure
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const validateQualityGateResponse = (data) => {
+    if (!data) {
+        throw new Error('Empty response from SonarQube API');
+    }
+    if (!data.projectStatus) {
+        throw new Error('Missing projectStatus in SonarQube API response');
+    }
+    if (!data.projectStatus.status) {
+        throw new Error('Missing status in projectStatus');
+    }
+    // Ensure conditions array exists (can be empty)
+    if (!Array.isArray(data.projectStatus.conditions)) {
+        console.warn('Missing or invalid conditions array, setting to empty array');
+        data.projectStatus.conditions = [];
+    }
+    // Handle period vs periods - API documentation shows "period" (singular)
+    // But ensure backward compatibility with "periods" (plural)
+    if (data.projectStatus.periods && Array.isArray(data.projectStatus.periods)) {
+        console.log('Found "periods" array, converting to single "period" object');
+        data.projectStatus.period = data.projectStatus.periods[0] ?? null;
+        delete data.projectStatus.periods;
+    }
+    // Validate each condition has required fields
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const [index, condition] of data.projectStatus.conditions.entries()) {
+        if (!condition.metricKey) {
+            console.warn(`Condition ${index} missing metricKey, skipping`);
+            continue;
+        }
+        if (!condition.status) {
+            console.warn(`Condition ${index} missing status, defaulting to UNKNOWN`);
+            condition.status = 'UNKNOWN';
+        }
+        if (!condition.actualValue) {
+            console.warn(`Condition ${index} missing actualValue, defaulting to N/A`);
+            condition.actualValue = 'N/A';
+        }
+        if (!condition.comparator) {
+            console.warn(`Condition ${index} missing comparator, defaulting to empty`);
+            condition.comparator = '';
+        }
+        // errorThreshold is optional per API docs
+    }
+    console.log(`Validated response: status=${data.projectStatus.status}, conditions=${data.projectStatus.conditions.length}, caycStatus=${data.projectStatus.caycStatus ?? 'N/A'}`);
+    return data;
+};
 const fetchQualityGate = async (url, projectKey, token, branch) => {
     const params = branch ? { projectKey, branch } : { projectKey };
-    const response = await axios_1.default.get(`${url}/api/qualitygates/project_status`, {
-        params,
-        auth: {
-            username: token,
-            password: ''
+    const apiUrl = `${url}/api/qualitygates/project_status`;
+    console.log(`Fetching quality gate status from: ${apiUrl}`);
+    console.log(`Parameters:`, JSON.stringify(params, null, 2));
+    try {
+        // Try with Bearer token first (newer SonarQube versions)
+        const response = await axios_1.default.get(apiUrl, {
+            params,
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        });
+        console.log(`API Response Status: ${response.status}`);
+        console.log(`API Response Data:`, JSON.stringify(response.data, null, 2));
+        return validateQualityGateResponse(response.data);
+    }
+    catch (error) {
+        if (error instanceof axios_1.AxiosError) {
+            console.log(`Bearer token failed with status ${error.response?.status}, trying basic auth...`);
+            // Fallback to basic auth for older versions
+            try {
+                const response = await axios_1.default.get(apiUrl, {
+                    params,
+                    auth: {
+                        username: token,
+                        password: ''
+                    }
+                });
+                console.log(`API Response Status (basic auth): ${response.status}`);
+                console.log(`API Response Data:`, JSON.stringify(response.data, null, 2));
+                return validateQualityGateResponse(response.data);
+            }
+            catch (basicAuthError) {
+                if (basicAuthError instanceof axios_1.AxiosError) {
+                    console.error(`Both authentication methods failed.`);
+                    console.error(`Bearer token error: ${error.response?.status} - ${error.response?.statusText}`);
+                    console.error(`Basic auth error: ${basicAuthError.response?.status} - ${basicAuthError.response?.statusText}`);
+                    console.error(`Response data:`, basicAuthError.response?.data);
+                    throw new Error(`Failed to fetch quality gate status. Bearer auth: ${error.response?.status}, Basic auth: ${basicAuthError.response?.status}. Check your token and project key.`);
+                }
+                throw basicAuthError;
+            }
         }
-    });
-    return response.data;
+        throw error;
+    }
 };
 exports.fetchQualityGate = fetchQualityGate;
 
@@ -35591,14 +35719,23 @@ exports.getCurrentDateTime = exports.formatStringNumber = exports.trimTrailingSl
  * @returns formatted status string
  */
 const getStatusEmoji = (status) => {
+    console.log(`Processing status: "${status}"`);
     switch (status) {
         case 'OK':
             return ':white_check_mark: OK';
         case 'ERROR':
             return ':exclamation: Error';
         case 'WARN':
+        case 'WARNING':
             return ':warning: Warning';
-        default: // "NONE" and others
+        case 'NONE':
+            return ':grey_question: None';
+        case 'IN_PROGRESS':
+            return ':hourglass_flowing_sand: In Progress';
+        case 'PENDING':
+            return ':clock1: Pending';
+        default:
+            console.warn(`Unknown status received: "${status}". Defaulting to grey question mark.`);
             return ':grey_question:';
     }
 };
@@ -35637,7 +35774,16 @@ exports.trimTrailingSlash = trimTrailingSlash;
  * @returns formatted number string
  */
 const formatStringNumber = (value) => {
+    // Handle edge cases
+    if (!value || value === 'N/A' || value === 'null' || value === 'undefined') {
+        return 'N/A';
+    }
     const floatValue = parseFloat(value);
+    // Handle NaN cases
+    if (isNaN(floatValue)) {
+        console.warn(`Invalid number format: "${value}", returning as-is`);
+        return value;
+    }
     const isValueInteger = floatValue % 1 === 0;
     return isValueInteger ? floatValue.toFixed(0) : floatValue.toFixed(2);
 };
