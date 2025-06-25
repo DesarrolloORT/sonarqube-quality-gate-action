@@ -50,7 +50,7 @@ jobs:
   test:
     runs-on: windows-latest
     steps:
-      - uses: DesarrolloORT/sonarqube-quality-gate-action@v1
+      - uses: DesarrolloORT/sonarqube-quality-gate-action@v2
         id: quality-gate-check
         with:
           sonar-project-key: ${{ secrets.SONAR_PROJECT_KEY }}
@@ -80,12 +80,12 @@ jobs:
   test:
     runs-on: windows-latest
     steps:
-      - uses: some/scan-actions@v1 # Step for scanning your project
+      - uses: some/scan-actions@v2 # Step for scanning your project
 
       - name: Wait for the quality gate result
         run: sleep 5
 
-      - uses: DesarrolloORT/sonarqube-quality-gate-action@v1
+      - uses: DesarrolloORT/sonarqube-quality-gate-action@v2
         id: quality-gate-check
         with:
           sonar-project-key: ${{ secrets.SONAR_PROJECT_KEY }}
