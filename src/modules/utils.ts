@@ -4,14 +4,26 @@
  * @returns formatted status string
  */
 export const getStatusEmoji = (status: string): string => {
+  console.log(`Processing status: "${status}"`)
+
   switch (status) {
     case 'OK':
       return ':white_check_mark: OK'
     case 'ERROR':
       return ':exclamation: Error'
     case 'WARN':
+    case 'WARNING':
       return ':warning: Warning'
-    default: // "NONE" and others
+    case 'NONE':
+      return ':grey_question: None'
+    case 'IN_PROGRESS':
+      return ':hourglass_flowing_sand: In Progress'
+    case 'PENDING':
+      return ':clock1: Pending'
+    default:
+      console.warn(
+        `Unknown status received: "${status}". Defaulting to grey question mark.`
+      )
       return ':grey_question:'
   }
 }
@@ -51,7 +63,19 @@ export const trimTrailingSlash = (value: string): string =>
  * @returns formatted number string
  */
 export const formatStringNumber = (value: string): string => {
+  // Handle edge cases
+  if (!value || value === 'N/A' || value === 'null' || value === 'undefined') {
+    return 'N/A'
+  }
+
   const floatValue = parseFloat(value)
+
+  // Handle NaN cases
+  if (isNaN(floatValue)) {
+    console.warn(`Invalid number format: "${value}", returning as-is`)
+    return value
+  }
+
   const isValueInteger = floatValue % 1 === 0
   return isValueInteger ? floatValue.toFixed(0) : floatValue.toFixed(2)
 }

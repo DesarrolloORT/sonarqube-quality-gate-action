@@ -82,7 +82,6 @@ const qualityGate: QualityGate = {
         actualValue: '0'
       }
     ],
-    periods: [],
     ignoredConditions: false
   }
 }

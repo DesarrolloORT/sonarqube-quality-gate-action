@@ -30,6 +30,12 @@ export async function run(): Promise<void> {
       inputs.branch
     )
 
+    console.log('Quality gate fetch completed successfully')
+    console.log(`Project status: ${result.projectStatus.status}`)
+    console.log(
+      `Number of conditions: ${result.projectStatus.conditions?.length || 0}`
+    )
+
     core.setOutput('project-status', result.projectStatus.status)
     core.setOutput('quality-gate-result', JSON.stringify(result))
 

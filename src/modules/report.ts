@@ -10,11 +10,27 @@ import {
 } from './utils'
 
 const buildRow = (condition: Condition): string => {
+  // Handle missing or undefined values
+  const metricKey = condition.metricKey ?? 'Unknown'
+  const status = condition.status ?? 'UNKNOWN'
+  const actualValue = condition.actualValue ?? 'N/A'
+  const comparator = condition.comparator ?? ''
+
+  console.log(`Building row for metric: ${metricKey}, status: ${status}`)
+
+  // Handle errorThreshold - some conditions don't have this per API docs
+  let thresholdDisplay = 'N/A'
+  if (condition.errorThreshold) {
+    thresholdDisplay = `${getComparatorSymbol(comparator)} ${condition.errorThreshold}`
+  } else if (comparator) {
+    thresholdDisplay = `${getComparatorSymbol(comparator)} (no threshold)`
+  }
+
   const rowValues = [
-    formatMetricKey(condition.metricKey), // Metric
-    getStatusEmoji(condition.status), // Status
-    formatStringNumber(condition.actualValue), // Value
-    `${getComparatorSymbol(condition.comparator)} ${condition.errorThreshold}` // Error Threshold
+    formatMetricKey(metricKey), // Metric
+    getStatusEmoji(status), // Status
+    formatStringNumber(actualValue), // Value
+    thresholdDisplay // Error Threshold
   ]
 
   return `|${rowValues.join('|')}|`
@@ -33,9 +49,18 @@ export const buildReport = (
 
   const projectStatus = getStatusEmoji(result.projectStatus.status)
 
-  const resultTable = result.projectStatus.conditions.map(buildRow).join('\n')
+  // Handle case where conditions might be empty or missing
+  const conditions = result.projectStatus.conditions || []
+  const resultTable =
+    conditions.length > 0
+      ? conditions.map(buildRow).join('\n')
+      : '|No metrics available|:grey_question:|N/A|N/A|'
 
   const { value: updatedDate, offset: updatedOffset } = getCurrentDateTime()
+
+  console.log(`Building report for project ${projectKey}`)
+  console.log(`Status: ${result.projectStatus.status}`)
+  console.log(`Number of conditions: ${conditions.length}`)
 
   return `### SonarQube Quality Gate Result
 - **Result**: ${projectStatus}${branch ? `\n- **Branch**: \`${branch}\`` : ''}
