@@ -198,7 +198,10 @@ describe('buildReport', () => {
       qualityGateWithoutThreshold,
       'project-key',
       'https://example.com',
-      { eventName: 'pull_request', repo: { owner: 'test-owner', repo: 'test-repo' } } as any
+      {
+        eventName: 'pull_request',
+        repo: { owner: 'test-owner', repo: 'test-repo' }
+      } as any
     )
 
     expect(result).toContain('> (no threshold)')

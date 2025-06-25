@@ -14,7 +14,9 @@ jest.mock('../modules/find-comment/main')
 
 const mockCore = core as jest.Mocked<typeof core>
 const mockGithub = github as jest.Mocked<typeof github>
-const mockFetchQualityGate = fetchQualityGate as jest.MockedFunction<typeof fetchQualityGate>
+const mockFetchQualityGate = fetchQualityGate as jest.MockedFunction<
+  typeof fetchQualityGate
+>
 const mockBuildReport = buildReport as jest.MockedFunction<typeof buildReport>
 const mockFindComment = findComment as jest.MockedFunction<typeof findComment>
 
@@ -45,7 +47,7 @@ describe('main - coverage improvements', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
-    
+
     // Setup default mocks
     mockCore.getInput.mockImplementation((name: string) => {
       const inputs: Record<string, string> = {
@@ -54,7 +56,7 @@ describe('main - coverage improvements', () => {
         'sonar-token': 'test-token',
         'disable-pr-comment': 'false',
         'fail-on-quality-gate-error': 'false',
-        'branch': 'main',
+        branch: 'main',
         'github-token': 'github-token'
       }
       return inputs[name] || ''
@@ -66,9 +68,9 @@ describe('main - coverage improvements', () => {
       writable: true,
       configurable: true
     })
-    
+
     mockGithub.getOctokit.mockReturnValue(mockOctokit as any)
-    
+
     mockFetchQualityGate.mockResolvedValue(mockQualityGateResult as any)
     mockBuildReport.mockReturnValue('Mock report body')
     mockFindComment.mockResolvedValue(undefined)
@@ -91,7 +93,9 @@ describe('main - coverage improvements', () => {
   it('should skip commenting when disabled', async () => {
     mockCore.getInput.mockImplementation((name: string) => {
       if (name === 'disable-pr-comment') return 'true'
-      return name === 'sonar-host-url' ? 'https://sonar.example.com/' : 'test-value'
+      return name === 'sonar-host-url'
+        ? 'https://sonar.example.com/'
+        : 'test-value'
     })
 
     await run()
@@ -103,7 +107,9 @@ describe('main - coverage improvements', () => {
   it('should throw error when github token is missing for PR', async () => {
     mockCore.getInput.mockImplementation((name: string) => {
       if (name === 'github-token') return ''
-      return name === 'sonar-host-url' ? 'https://sonar.example.com/' : 'test-value'
+      return name === 'sonar-host-url'
+        ? 'https://sonar.example.com/'
+        : 'test-value'
     })
 
     await run()
@@ -145,9 +151,11 @@ describe('main - coverage improvements', () => {
     mockCore.getInput.mockImplementation((name: string) => {
       if (name === 'fail-on-quality-gate-error') return 'true'
       if (name === 'sonar-project-key') return 'test-project'
-      return name === 'sonar-host-url' ? 'https://sonar.example.com/' : 'test-value'
+      return name === 'sonar-host-url'
+        ? 'https://sonar.example.com/'
+        : 'test-value'
     })
-    
+
     const errorResult = {
       projectStatus: {
         status: 'ERROR',

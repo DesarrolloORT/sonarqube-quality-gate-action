@@ -26,7 +26,9 @@ describe('getStatusEmoji', () => {
   })
 
   test('should return hourglass when status is `IN_PROGRESS`', () => {
-    expect(getStatusEmoji('IN_PROGRESS')).toBe(':hourglass_flowing_sand: In Progress')
+    expect(getStatusEmoji('IN_PROGRESS')).toBe(
+      ':hourglass_flowing_sand: In Progress'
+    )
   })
 
   test('should return clock when status is `PENDING`', () => {

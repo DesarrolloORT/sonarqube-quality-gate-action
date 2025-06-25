@@ -34,7 +34,12 @@ describe('report - additional coverage', () => {
   }
 
   it('should handle condition with comparator but no errorThreshold', () => {
-    const result = buildReport(mockQualityGate, 'https://sonar.example.com', 'test-project', mockContext)
+    const result = buildReport(
+      mockQualityGate,
+      'https://sonar.example.com',
+      'test-project',
+      mockContext
+    )
 
     // Should contain "(no threshold)" for the condition without errorThreshold
     expect(result).toContain('> (no threshold)')
@@ -56,29 +61,57 @@ describe('report - additional coverage', () => {
       }
     }
 
-    const result = buildReport(qualityGateWithoutBoth, 'https://sonar.example.com', 'test-project', mockContext)
+    const result = buildReport(
+      qualityGateWithoutBoth,
+      'https://sonar.example.com',
+      'test-project',
+      mockContext
+    )
 
     // Should contain "N/A" for threshold when no comparator or errorThreshold
     expect(result).toContain('N/A')
   })
 
   it('should build report with branch parameter in URL', () => {
-    const result = buildReport(mockQualityGate, 'https://sonar.example.com', 'test-project', mockContext, 'feature/test')
+    const result = buildReport(
+      mockQualityGate,
+      'https://sonar.example.com',
+      'test-project',
+      mockContext,
+      'feature/test'
+    )
 
-    expect(result).toContain('https://sonar.example.com/dashboard?id=test-project&branch=feature%2Ftest')
+    expect(result).toContain(
+      'https://sonar.example.com/dashboard?id=test-project&branch=feature%2Ftest'
+    )
   })
 
   it('should build report without branch parameter when branch is undefined', () => {
-    const result = buildReport(mockQualityGate, 'https://sonar.example.com', 'test-project', mockContext)
+    const result = buildReport(
+      mockQualityGate,
+      'https://sonar.example.com',
+      'test-project',
+      mockContext
+    )
 
-    expect(result).toContain('https://sonar.example.com/dashboard?id=test-project')
+    expect(result).toContain(
+      'https://sonar.example.com/dashboard?id=test-project'
+    )
     expect(result).not.toContain('&branch=')
   })
 
   it('should build report without branch parameter when branch is empty string', () => {
-    const result = buildReport(mockQualityGate, 'https://sonar.example.com', 'test-project', mockContext, '')
+    const result = buildReport(
+      mockQualityGate,
+      'https://sonar.example.com',
+      'test-project',
+      mockContext,
+      ''
+    )
 
-    expect(result).toContain('https://sonar.example.com/dashboard?id=test-project')
+    expect(result).toContain(
+      'https://sonar.example.com/dashboard?id=test-project'
+    )
     expect(result).not.toContain('&branch=')
   })
 
@@ -91,7 +124,12 @@ describe('report - additional coverage', () => {
       }
     }
 
-    const result = buildReport(qualityGateNoConditions, 'https://sonar.example.com', 'test-project', mockContext)
+    const result = buildReport(
+      qualityGateNoConditions,
+      'https://sonar.example.com',
+      'test-project',
+      mockContext
+    )
 
     expect(result).toContain('No metrics available')
   })

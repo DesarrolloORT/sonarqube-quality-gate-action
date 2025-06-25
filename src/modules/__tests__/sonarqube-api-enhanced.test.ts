@@ -60,14 +60,21 @@ describe('fetchQualityGate - enhanced functionality', () => {
 
     const result = await fetchQualityGate('https://example.com', 'key', 'token')
 
-    const conditionWithoutThreshold = result.projectStatus.conditions.find(c => c.metricKey === 'reopened_issues')
+    const conditionWithoutThreshold = result.projectStatus.conditions.find(
+      c => c.metricKey === 'reopened_issues'
+    )
     expect(conditionWithoutThreshold?.errorThreshold).toBeUndefined()
   })
 
   it('should fallback to basic auth when bearer token fails', async () => {
     const bearerError = new AxiosError('Unauthorized', '401')
-    bearerError.response = { status: 401, statusText: 'Unauthorized', data: {}, headers: {}, config: {} as any }
-    
+    bearerError.response = {
+      status: 401,
+      statusText: 'Unauthorized',
+      data: {},
+      headers: {},
+      config: {} as any
+    }
     ;(axios.get as jest.Mock)
       .mockRejectedValueOnce(bearerError)
       .mockResolvedValueOnce(mockValidResponse)
@@ -75,46 +82,67 @@ describe('fetchQualityGate - enhanced functionality', () => {
     await fetchQualityGate('https://example.com', 'key', 'token')
 
     expect(axios.get).toHaveBeenCalledTimes(2)
-    expect(axios.get).toHaveBeenNthCalledWith(1, 'https://example.com/api/qualitygates/project_status', {
-      params: { projectKey: 'key' },
-      headers: { Authorization: 'Bearer token' }
-    })
-    expect(axios.get).toHaveBeenNthCalledWith(2, 'https://example.com/api/qualitygates/project_status', {
-      params: { projectKey: 'key' },
-      auth: { username: 'token', password: '' }
-    })
+    expect(axios.get).toHaveBeenNthCalledWith(
+      1,
+      'https://example.com/api/qualitygates/project_status',
+      {
+        params: { projectKey: 'key' },
+        headers: { Authorization: 'Bearer token' }
+      }
+    )
+    expect(axios.get).toHaveBeenNthCalledWith(
+      2,
+      'https://example.com/api/qualitygates/project_status',
+      {
+        params: { projectKey: 'key' },
+        auth: { username: 'token', password: '' }
+      }
+    )
   })
 
   it('should throw error when both auth methods fail', async () => {
     const bearerError = new AxiosError('Unauthorized', '401')
-    bearerError.response = { status: 401, statusText: 'Unauthorized', data: {}, headers: {}, config: {} as any }
-    
-    const basicError = new AxiosError('Forbidden', '403')
-    basicError.response = { status: 403, statusText: 'Forbidden', data: {}, headers: {}, config: {} as any }
+    bearerError.response = {
+      status: 401,
+      statusText: 'Unauthorized',
+      data: {},
+      headers: {},
+      config: {} as any
+    }
 
+    const basicError = new AxiosError('Forbidden', '403')
+    basicError.response = {
+      status: 403,
+      statusText: 'Forbidden',
+      data: {},
+      headers: {},
+      config: {} as any
+    }
     ;(axios.get as jest.Mock)
       .mockRejectedValueOnce(bearerError)
       .mockRejectedValueOnce(basicError)
 
-    await expect(fetchQualityGate('https://example.com', 'key', 'token'))
-      .rejects
-      .toThrow('Failed to fetch quality gate status. Bearer auth: 401, Basic auth: 403. Check your token and project key.')
+    await expect(
+      fetchQualityGate('https://example.com', 'key', 'token')
+    ).rejects.toThrow(
+      'Failed to fetch quality gate status. Bearer auth: 401, Basic auth: 403. Check your token and project key.'
+    )
   })
 
   it('should throw error for empty response', async () => {
     ;(axios.get as jest.Mock).mockResolvedValue({ data: null, status: 200 })
 
-    await expect(fetchQualityGate('https://example.com', 'key', 'token'))
-      .rejects
-      .toThrow('Empty response from SonarQube API')
+    await expect(
+      fetchQualityGate('https://example.com', 'key', 'token')
+    ).rejects.toThrow('Empty response from SonarQube API')
   })
 
   it('should throw error for missing projectStatus', async () => {
     ;(axios.get as jest.Mock).mockResolvedValue({ data: {}, status: 200 })
 
-    await expect(fetchQualityGate('https://example.com', 'key', 'token'))
-      .rejects
-      .toThrow('Missing projectStatus in SonarQube API response')
+    await expect(
+      fetchQualityGate('https://example.com', 'key', 'token')
+    ).rejects.toThrow('Missing projectStatus in SonarQube API response')
   })
 
   it('should handle legacy periods array and convert to period object', async () => {
@@ -158,9 +186,9 @@ describe('fetchQualityGate - enhanced functionality', () => {
 
     ;(axios.get as jest.Mock).mockResolvedValue(invalidResponse)
 
-    await expect(fetchQualityGate('https://example.com', 'key', 'token'))
-      .rejects
-      .toThrow('Missing status in projectStatus')
+    await expect(
+      fetchQualityGate('https://example.com', 'key', 'token')
+    ).rejects.toThrow('Missing status in projectStatus')
   })
 
   it('should handle missing or invalid conditions array', async () => {
@@ -168,7 +196,7 @@ describe('fetchQualityGate - enhanced functionality', () => {
     const invalidResponse = {
       data: {
         projectStatus: {
-          status: 'OK',
+          status: 'OK'
           // missing conditions array
         }
       },
@@ -180,7 +208,9 @@ describe('fetchQualityGate - enhanced functionality', () => {
     const result = await fetchQualityGate('https://example.com', 'key', 'token')
 
     expect(result.projectStatus.conditions).toEqual([])
-    expect(consoleSpy).toHaveBeenCalledWith('Missing or invalid conditions array, setting to empty array')
+    expect(consoleSpy).toHaveBeenCalledWith(
+      'Missing or invalid conditions array, setting to empty array'
+    )
     consoleSpy.mockRestore()
   })
 
@@ -217,10 +247,18 @@ describe('fetchQualityGate - enhanced functionality', () => {
 
     const result = await fetchQualityGate('https://example.com', 'key', 'token')
 
-    expect(consoleSpy).toHaveBeenCalledWith('Condition 0 missing metricKey, skipping')
-    expect(consoleSpy).toHaveBeenCalledWith('Condition 1 missing status, defaulting to UNKNOWN')
-    expect(consoleSpy).toHaveBeenCalledWith('Condition 2 missing actualValue, defaulting to N/A')
-    expect(consoleSpy).toHaveBeenCalledWith('Condition 2 missing comparator, defaulting to empty')
+    expect(consoleSpy).toHaveBeenCalledWith(
+      'Condition 0 missing metricKey, skipping'
+    )
+    expect(consoleSpy).toHaveBeenCalledWith(
+      'Condition 1 missing status, defaulting to UNKNOWN'
+    )
+    expect(consoleSpy).toHaveBeenCalledWith(
+      'Condition 2 missing actualValue, defaulting to N/A'
+    )
+    expect(consoleSpy).toHaveBeenCalledWith(
+      'Condition 2 missing comparator, defaulting to empty'
+    )
 
     // Should have processed the conditions (first one without metricKey is skipped, but it seems all 3 are processed)
     expect(result.projectStatus.conditions).toHaveLength(3) // All conditions processed, first one keeps other fields

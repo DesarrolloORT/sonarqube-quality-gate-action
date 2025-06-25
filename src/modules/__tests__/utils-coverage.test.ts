@@ -19,14 +19,14 @@ describe('utils - additional coverage', () => {
 
     it('should return grey question mark and warn for unknown status', () => {
       const consoleSpy = jest.spyOn(console, 'warn').mockImplementation()
-      
+
       const result = getStatusEmoji('UNKNOWN_STATUS')
-      
+
       expect(result).toBe(':grey_question:')
       expect(consoleSpy).toHaveBeenCalledWith(
         'Unknown status received: "UNKNOWN_STATUS". Defaulting to grey question mark.'
       )
-      
+
       consoleSpy.mockRestore()
     })
   })

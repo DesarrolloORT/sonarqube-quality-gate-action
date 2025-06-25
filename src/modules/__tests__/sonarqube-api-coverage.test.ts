@@ -167,33 +167,39 @@ describe('fetchQualityGate - coverage improvements', () => {
 
     ;(axios.get as jest.Mock).mockResolvedValue(responseWithoutStatus)
 
-    await expect(fetchQualityGate('https://example.com', 'key', 'token'))
-      .rejects
-      .toThrow('Missing status in projectStatus')
+    await expect(
+      fetchQualityGate('https://example.com', 'key', 'token')
+    ).rejects.toThrow('Missing status in projectStatus')
   })
 
   it('should handle non-AxiosError in bearer token attempt and rethrow', async () => {
     const genericError = new Error('Network error')
-    
+
     ;(axios.get as jest.Mock).mockRejectedValue(genericError)
 
-    await expect(fetchQualityGate('https://example.com', 'key', 'token'))
-      .rejects
-      .toThrow('Network error')
+    await expect(
+      fetchQualityGate('https://example.com', 'key', 'token')
+    ).rejects.toThrow('Network error')
   })
 
   it('should handle non-AxiosError in basic auth fallback and rethrow', async () => {
     const bearerError = new AxiosError('Unauthorized', '401')
-    bearerError.response = { status: 401, statusText: 'Unauthorized', data: {}, headers: {}, config: {} as any }
-    
+    bearerError.response = {
+      status: 401,
+      statusText: 'Unauthorized',
+      data: {},
+      headers: {},
+      config: {} as any
+    }
+
     const genericError = new Error('Network error in basic auth')
-    
+
     ;(axios.get as jest.Mock)
       .mockRejectedValueOnce(bearerError)
       .mockRejectedValueOnce(genericError)
 
-    await expect(fetchQualityGate('https://example.com', 'key', 'token'))
-      .rejects
-      .toThrow('Network error in basic auth')
+    await expect(
+      fetchQualityGate('https://example.com', 'key', 'token')
+    ).rejects.toThrow('Network error in basic auth')
   })
 })

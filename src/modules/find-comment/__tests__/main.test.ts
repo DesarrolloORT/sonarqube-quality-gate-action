@@ -8,7 +8,7 @@ const mockGithub = github as jest.Mocked<typeof github>
 describe('find-comment module', () => {
   const mockPaginate = jest.fn()
   const mockPaginateIterator = jest.fn()
-  
+
   const mockOctokit = {
     paginate: mockPaginate,
     rest: {
@@ -48,13 +48,15 @@ describe('find-comment module', () => {
         { id: 2, body: 'Second comment', user: { login: 'test-user' } }
       ]
 
-      mockPaginateIterator.mockReturnValue([
-        { data: mockComments }
-      ] as any)
+      mockPaginateIterator.mockReturnValue([{ data: mockComments }] as any)
 
       const result = await findComment(inputs)
 
-      expect(result).toEqual({ id: 2, body: 'Second comment', user: { login: 'test-user' } })
+      expect(result).toEqual({
+        id: 2,
+        body: 'Second comment',
+        user: { login: 'test-user' }
+      })
       expect(mockGithub.getOctokit).toHaveBeenCalledWith('test-token')
       expect(mockPaginateIterator).toHaveBeenCalledWith(
         mockOctokit.rest.issues.listComments,
@@ -75,16 +77,22 @@ describe('find-comment module', () => {
 
       const mockComments = [
         { id: 1, body: 'Regular comment', user: { login: 'user1' } },
-        { id: 2, body: 'SonarQube quality gate results', user: { login: 'user2' } }
+        {
+          id: 2,
+          body: 'SonarQube quality gate results',
+          user: { login: 'user2' }
+        }
       ]
 
-      mockPaginateIterator.mockReturnValue([
-        { data: mockComments }
-      ] as any)
+      mockPaginateIterator.mockReturnValue([{ data: mockComments }] as any)
 
       const result = await findComment(inputs)
 
-      expect(result).toEqual({ id: 2, body: 'SonarQube quality gate results', user: { login: 'user2' } })
+      expect(result).toEqual({
+        id: 2,
+        body: 'SonarQube quality gate results',
+        user: { login: 'user2' }
+      })
     })
 
     it('should find comment by both author and body content', async () => {
@@ -96,17 +104,27 @@ describe('find-comment module', () => {
       }
 
       const mockComments = [
-        { id: 1, body: 'SonarQube quality gate results', user: { login: 'other-bot' } },
-        { id: 2, body: 'SonarQube quality gate results', user: { login: 'sonar-bot' } }
+        {
+          id: 1,
+          body: 'SonarQube quality gate results',
+          user: { login: 'other-bot' }
+        },
+        {
+          id: 2,
+          body: 'SonarQube quality gate results',
+          user: { login: 'sonar-bot' }
+        }
       ]
 
-      mockPaginateIterator.mockReturnValue([
-        { data: mockComments }
-      ] as any)
+      mockPaginateIterator.mockReturnValue([{ data: mockComments }] as any)
 
       const result = await findComment(inputs)
 
-      expect(result).toEqual({ id: 2, body: 'SonarQube quality gate results', user: { login: 'sonar-bot' } })
+      expect(result).toEqual({
+        id: 2,
+        body: 'SonarQube quality gate results',
+        user: { login: 'sonar-bot' }
+      })
     })
 
     it('should handle comments with null user', async () => {
@@ -122,13 +140,15 @@ describe('find-comment module', () => {
         { id: 2, body: 'Valid comment', user: { login: 'test-user' } }
       ]
 
-      mockPaginateIterator.mockReturnValue([
-        { data: mockComments }
-      ] as any)
+      mockPaginateIterator.mockReturnValue([{ data: mockComments }] as any)
 
       const result = await findComment(inputs)
 
-      expect(result).toEqual({ id: 1, body: 'Comment with null user', user: null })
+      expect(result).toEqual({
+        id: 1,
+        body: 'Comment with null user',
+        user: null
+      })
     })
 
     it('should handle comments without body', async () => {
@@ -144,9 +164,7 @@ describe('find-comment module', () => {
         { id: 2, body: 'Comment with test content', user: { login: 'user2' } }
       ]
 
-      mockPaginateIterator.mockReturnValue([
-        { data: mockComments }
-      ] as any)
+      mockPaginateIterator.mockReturnValue([{ data: mockComments }] as any)
 
       const result = await findComment(inputs)
 
@@ -165,9 +183,7 @@ describe('find-comment module', () => {
         { id: 2, body: 'Comment 2', user: { login: 'user2' } }
       ]
 
-      mockPaginateIterator.mockReturnValue([
-        { data: mockComments }
-      ] as any)
+      mockPaginateIterator.mockReturnValue([{ data: mockComments }] as any)
 
       const result = await findComment(inputs)
 
@@ -198,7 +214,11 @@ describe('find-comment module', () => {
 
       const result = await findComment(inputs)
 
-      expect(result).toEqual({ id: 3, body: 'Comment 3', user: { login: 'target-user' } })
+      expect(result).toEqual({
+        id: 3,
+        body: 'Comment 3',
+        user: { login: 'target-user' }
+      })
     })
   })
 
@@ -222,7 +242,11 @@ describe('find-comment module', () => {
       const result = await findComment(inputs)
 
       // Should find the last matching comment (id: 3) since comments are reversed
-      expect(result).toEqual({ id: 3, body: 'Third comment', user: { login: 'test-user' } })
+      expect(result).toEqual({
+        id: 3,
+        body: 'Third comment',
+        user: { login: 'test-user' }
+      })
       expect(mockPaginate).toHaveBeenCalledWith(
         mockOctokit.rest.issues.listComments,
         {
@@ -270,7 +294,11 @@ describe('find-comment module', () => {
       const result = await findComment(inputs)
 
       // Should find the last matching comment (id: 3)
-      expect(result).toEqual({ id: 3, body: 'Another important message', user: { login: 'user3' } })
+      expect(result).toEqual({
+        id: 3,
+        body: 'Another important message',
+        user: { login: 'user3' }
+      })
     })
   })
 
@@ -287,13 +315,15 @@ describe('find-comment module', () => {
         { id: 1, body: 'Any comment', user: { login: 'any-user' } }
       ]
 
-      mockPaginateIterator.mockReturnValue([
-        { data: mockComments }
-      ] as any)
+      mockPaginateIterator.mockReturnValue([{ data: mockComments }] as any)
 
       const result = await findComment(inputs)
 
-      expect(result).toEqual({ id: 1, body: 'Any comment', user: { login: 'any-user' } })
+      expect(result).toEqual({
+        id: 1,
+        body: 'Any comment',
+        user: { login: 'any-user' }
+      })
     })
 
     it('should handle empty comments array', async () => {
@@ -303,9 +333,7 @@ describe('find-comment module', () => {
         direction: 'first'
       }
 
-      mockPaginateIterator.mockReturnValue([
-        { data: [] }
-      ] as any)
+      mockPaginateIterator.mockReturnValue([{ data: [] }] as any)
 
       const result = await findComment(inputs)
 
