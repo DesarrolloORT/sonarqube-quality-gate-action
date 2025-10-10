@@ -11,13 +11,22 @@ on:
         description: 'SonarQube project key'
         required: true
       branch:
-        description: 'Branch name (optional)'
+        description: 'Branch name (optional, usado si no hay PR)'
+        required: false
+      pr-number:
+        description: 'Pull Request number (opcional, tiene prioridad sobre branch)'
         required: false
 
 jobs:
   debug-quality-gate:
     name: Debug Quality Gate
     runs-on: ubuntu-latest
+
+    env:
+      SONAR_HOST_URL: ${{ github.event.inputs.sonar-host-url }}
+      SONAR_PROJECT_KEY: ${{ github.event.inputs.sonar-project-key }}
+      PR_NUMBER: ${{ github.event.inputs['pr-number'] || '' }}
+      BRANCH_NAME: ${{ github.event.inputs.branch || '' }}
 
     steps:
       - name: Checkout
@@ -27,46 +36,56 @@ jobs:
         id: quality-gate
         uses: ./
         with:
-          sonar-host-url: ${{ github.event.inputs.sonar-host-url }}
-          sonar-project-key: ${{ github.event.inputs.sonar-project-key }}
+          sonar-host-url: ${{ env.SONAR_HOST_URL }}
+          sonar-project-key: ${{ env.SONAR_PROJECT_KEY }}
           sonar-token: ${{ secrets.SONAR_TOKEN }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          branch: ${{ github.event.inputs.branch }}
-          disable-pr-comment: 'true' # Disable PR comments for debugging
-          fail-on-quality-gate-error: 'false' # Don't fail the workflow for debugging
+          # si tu acción interna soporta 'branch' o 'pullRequest', podrías pasarle ambos:
+          branch: ${{ env.BRANCH_NAME }}
+          pullRequest: ${{ env.PR_NUMBER }}
+          disable-pr-comment: 'true'
+          fail-on-quality-gate-error: 'false'
 
       - name: Print Results
         run: |
-          echo "Project Status: ${{ steps.quality-gate.outputs.project-status }}"
-          echo "Quality Gate Result: ${{ steps.quality-gate.outputs.quality-gate-result }}"
+          echo "Project Status: ${{ steps.quality-gate.outputs['project-status'] }}"
+          echo "Quality Gate Result: ${{ steps.quality-gate.outputs['quality-gate-result'] }}"
 
       - name: Test API Manually (Debug)
         run: |
           echo "Testing API manually..."
-          echo "Host: ${{ github.event.inputs.sonar-host-url }}"
-          echo "Project: ${{ github.event.inputs.sonar-project-key }}"
+          echo "Host: $SONAR_HOST_URL"
+          echo "Project: $SONAR_PROJECT_KEY"
+          echo "PR_NUMBER: ${PR_NUMBER:-<none>}"
+          echo "BRANCH_NAME: ${BRANCH_NAME:-<none>}"
 
-          # Test with Bearer token
+          BASE_URL="$SONAR_HOST_URL/api/qualitygates/project_status?projectKey=$SONAR_PROJECT_KEY"
+          if [ -n "$PR_NUMBER" ]; then
+            BASE_URL="$BASE_URL&pullRequest=$PR_NUMBER"
+          elif [ -n "$BRANCH_NAME" ]; then
+            BASE_URL="$BASE_URL&branch=$BRANCH_NAME"
+          fi
+          echo "Resolved URL: $BASE_URL"
+
           echo "Testing with Bearer token..."
           RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
             -H "Authorization: Bearer ${{ secrets.SONAR_TOKEN }}" \
-            "${{ github.event.inputs.sonar-host-url }}/api/qualitygates/project_status?projectKey=${{ github.event.inputs.sonar-project-key }}")
+            "$BASE_URL")
 
-          HTTP_STATUS=$(echo $RESPONSE | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
-          BODY=$(echo $RESPONSE | sed -e 's/HTTPSTATUS\:.*//g')
+          HTTP_STATUS=$(echo "$RESPONSE" | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+          BODY=$(echo "$RESPONSE" | sed -e 's/HTTPSTATUS\:.*//g')
 
           echo "Bearer token response status: $HTTP_STATUS"
           echo "Bearer token response body: $BODY"
 
-          # Test with Basic auth if Bearer fails
           if [ "$HTTP_STATUS" != "200" ]; then
             echo "Testing with Basic auth..."
             RESPONSE2=$(curl -s -w "HTTPSTATUS:%{http_code}" \
               -u "${{ secrets.SONAR_TOKEN }}:" \
-              "${{ github.event.inputs.sonar-host-url }}/api/qualitygates/project_status?projectKey=${{ github.event.inputs.sonar-project-key }}")
+              "$BASE_URL")
 
-            HTTP_STATUS2=$(echo $RESPONSE2 | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
-            BODY2=$(echo $RESPONSE2 | sed -e 's/HTTPSTATUS\:.*//g')
+            HTTP_STATUS2=$(echo "$RESPONSE2" | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+            BODY2=$(echo "$RESPONSE2" | sed -e 's/HTTPSTATUS\:.*//g')
 
             echo "Basic auth response status: $HTTP_STATUS2"
             echo "Basic auth response body: $BODY2"
