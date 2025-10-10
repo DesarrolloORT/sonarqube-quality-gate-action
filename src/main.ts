@@ -20,6 +20,7 @@ export async function run(): Promise<void> {
       failOnQualityGateError:
         core.getInput('fail-on-quality-gate-error') === 'true',
       branch: core.getInput('branch'),
+      pullRequest: core.getInput('pull-request'),
       githubToken: core.getInput('github-token')
     }
 
@@ -27,7 +28,8 @@ export async function run(): Promise<void> {
       inputs.hostURL,
       inputs.projectKey,
       inputs.token,
-      inputs.branch
+      inputs.branch,
+      inputs.pullRequest
     )
 
     console.log('Quality gate fetch completed successfully')

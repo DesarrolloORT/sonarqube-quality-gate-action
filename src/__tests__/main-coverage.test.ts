@@ -57,6 +57,7 @@ describe('main - coverage improvements', () => {
         'disable-pr-comment': 'false',
         'fail-on-quality-gate-error': 'false',
         branch: 'main',
+        'pull-request': '',
         'github-token': 'github-token'
       }
       return inputs[name] || ''
@@ -212,7 +213,8 @@ describe('main - coverage improvements', () => {
       'https://sonar.example.com', // Should be trimmed
       'test-project',
       'test-token',
-      'main'
+      'main',
+      '' // pull-request parameter
     )
   })
 })

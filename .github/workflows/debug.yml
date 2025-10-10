@@ -1,111 +1,100 @@
 name: Debug SonarQube Quality Gate
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
   workflow_dispatch:
     inputs:
       sonar-host-url:
         description: 'SonarQube server URL'
-        required: false
+        required: true
+        default: 'https://your-sonar-server.com'
       sonar-project-key:
         description: 'SonarQube project key'
-        required: false
+        required: true
       branch:
-        description: 'Branch name (optional, usado si no hay PR)'
+        description: 'Branch name (optional)'
         required: false
-      pr-number:
-        description: 'Pull Request number (opcional, prioridad sobre branch)'
-        required: false
+  pull_request:
+    branches:
+      - main
+      - master
+      - develop
+  push:
+    branches-ignore:
+      - main
+      - master
 
 jobs:
   debug-quality-gate:
     name: Debug Quality Gate
     runs-on: ubuntu-latest
 
-    # Variables “fuente de verdad”. Preferí repo Variables (Settings → Variables)
-    env:
-      SONAR_HOST_URL: ${{ inputs.sonar-host-url || secrets.SONAR_HOST_URL }}
-      SONAR_PROJECT_KEY: ${{ inputs.sonar-project-key || vars.SONAR_PROJECT_KEY || 'tu-project-key' }}
-      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-
-      # Contexto PR/branch sin warnings en ambos eventos
-      PR_NUMBER: ${{ inputs.pr-number || github.event.pull_request.number || '' }}
-      BRANCH_NAME: ${{ inputs.branch || github.head_ref || github.ref_name || '' }}
-
     steps:
-      - name: Check required params
-        run: |
-          if [ -z "${SONAR_HOST_URL}" ]; then
-            echo "Falta SONAR_HOST_URL (secrets o input)."
-            exit 1
-          fi
-          if [ -z "${SONAR_PROJECT_KEY}" ]; then
-            echo "Falta SONAR_PROJECT_KEY (vars, input o literal)."
-            exit 1
-          fi
-          if [ -z "${SONAR_TOKEN}" ]; then
-            echo "Falta SONAR_TOKEN (secrets). Si el PR viene de fork, los secrets no están disponibles."
-            exit 1
-          fi
-
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Si tu Action local (./) soporta parámetros pullRequest/branch, pásalos aquí también
       - name: Test SonarQube Quality Gate Action (with debug)
         id: quality-gate
         uses: ./
         with:
-          sonar-host-url: ${{ env.SONAR_HOST_URL }}
-          sonar-project-key: ${{ env.SONAR_PROJECT_KEY }}
-          sonar-token: ${{ env.SONAR_TOKEN }}
+          sonar-host-url: ${{ github.event.inputs.sonar-host-url}}
+          sonar-project-key: ${{ github.event.inputs.sonar-project-key }}
+          sonar-token: ${{ secrets.SONAR_TOKEN }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          pullRequest: ${{ env.PR_NUMBER }}
-          branch: ${{ env.BRANCH_NAME }}
-          disable-pr-comment: 'true'
-          fail-on-quality-gate-error: 'false'
+          branch: ${{ github.event.inputs.branch }}
+          pull-request: ${{ github.event.pull_request.number }}
+          disable-pr-comment: 'false' # Enable PR comments
+          fail-on-quality-gate-error: 'false' # Don't fail the workflow for debugging
 
       - name: Print Results
         run: |
-          echo "Project Status: ${{ steps.quality-gate.outputs['project-status'] }}"
-          echo "Quality Gate Result: ${{ steps.quality-gate.outputs['quality-gate-result'] }}"
+          echo "Project Status: ${{ steps.quality-gate.outputs.project-status }}"
+          echo "Quality Gate Result: ${{ steps.quality-gate.outputs.quality-gate-result }}"
 
       - name: Test API Manually (Debug)
         run: |
           echo "Testing API manually..."
-          echo "Host: $SONAR_HOST_URL"
-          echo "Project: $SONAR_PROJECT_KEY"
-          echo "PR_NUMBER: ${PR_NUMBER:-<none>}"
-          echo "BRANCH_NAME: ${BRANCH_NAME:-<none>}"
+          echo "Host: ${{ github.event.inputs.sonar-host-url }}"
+          echo "Project: ${{ github.event.inputs.sonar-project-key }}"
+          echo "PR Number: ${{ github.event.pull_request.number }}"
+          echo "Branch: ${{ github.event.inputs.branch || github.head_ref }}"
 
-          BASE_URL="$SONAR_HOST_URL/api/qualitygates/project_status?projectKey=$SONAR_PROJECT_KEY"
-          if [ -n "$PR_NUMBER" ]; then
-            BASE_URL="$BASE_URL&pullRequest=$PR_NUMBER"
-          elif [ -n "$BRANCH_NAME" ]; then
-            BASE_URL="$BASE_URL&branch=$BRANCH_NAME"
+          # Build API URL with PR or branch parameter
+          BASE_URL="${{ github.event.inputs.sonar-host-url }}/api/qualitygates/project_status?projectKey=${{ github.event.inputs.sonar-project-key }}"
+
+          if [ -n "${{ github.event.pull_request.number }}" ]; then
+            API_URL="${BASE_URL}&pullRequest=${{ github.event.pull_request.number }}"
+            echo "Using Pull Request parameter"
+          elif [ -n "${{ github.event.inputs.branch || github.head_ref }}" ]; then
+            API_URL="${BASE_URL}&branch=${{ github.event.inputs.branch || github.head_ref }}"
+            echo "Using Branch parameter"
+          else
+            API_URL="${BASE_URL}"
+            echo "Using default (main branch)"
           fi
-          echo "Resolved URL: $BASE_URL"
 
+          echo "API URL: ${API_URL}"
+
+          # Test with Bearer token
           echo "Testing with Bearer token..."
           RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
-            -H "Authorization: Bearer $SONAR_TOKEN" \
-            "$BASE_URL")
+            -H "Authorization: Bearer ${{ secrets.SONAR_TOKEN }}" \
+            "${API_URL}")
 
-          HTTP_STATUS=$(echo "$RESPONSE" | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
-          BODY=$(echo "$RESPONSE" | sed -e 's/HTTPSTATUS\:.*//g')
+          HTTP_STATUS=$(echo $RESPONSE | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+          BODY=$(echo $RESPONSE | sed -e 's/HTTPSTATUS\:.*//g')
 
           echo "Bearer token response status: $HTTP_STATUS"
           echo "Bearer token response body: $BODY"
 
+          # Test with Basic auth if Bearer fails
           if [ "$HTTP_STATUS" != "200" ]; then
             echo "Testing with Basic auth..."
             RESPONSE2=$(curl -s -w "HTTPSTATUS:%{http_code}" \
-              -u "${SONAR_TOKEN}:" \
-              "$BASE_URL")
+              -u "${{ secrets.SONAR_TOKEN }}:" \
+              "${API_URL}")
 
-            HTTP_STATUS2=$(echo "$RESPONSE2" | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
-            BODY2=$(echo "$RESPONSE2" | sed -e 's/HTTPSTATUS\:.*//g')
+            HTTP_STATUS2=$(echo $RESPONSE2 | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+            BODY2=$(echo $RESPONSE2 | sed -e 's/HTTPSTATUS\:.*//g')
 
             echo "Basic auth response status: $HTTP_STATUS2"
             echo "Basic auth response body: $BODY2"

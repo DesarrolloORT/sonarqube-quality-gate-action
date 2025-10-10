@@ -35377,9 +35377,10 @@ async function run() {
             commentDisabled: core.getInput('disable-pr-comment') === 'true',
             failOnQualityGateError: core.getInput('fail-on-quality-gate-error') === 'true',
             branch: core.getInput('branch'),
+            pullRequest: core.getInput('pull-request'),
             githubToken: core.getInput('github-token')
         };
-        const result = await (0, sonarqube_api_1.fetchQualityGate)(inputs.hostURL, inputs.projectKey, inputs.token, inputs.branch);
+        const result = await (0, sonarqube_api_1.fetchQualityGate)(inputs.hostURL, inputs.projectKey, inputs.token, inputs.branch, inputs.pullRequest);
         console.log('Quality gate fetch completed successfully');
         console.log(`Project status: ${result.projectStatus.status}`);
         console.log(`Number of conditions: ${result.projectStatus.conditions?.length || 0}`);
@@ -35654,8 +35655,16 @@ const validateQualityGateResponse = (data) => {
     console.log(`Validated response: status=${data.projectStatus.status}, conditions=${data.projectStatus.conditions.length}, caycStatus=${data.projectStatus.caycStatus ?? 'N/A'}`);
     return data;
 };
-const fetchQualityGate = async (url, projectKey, token, branch) => {
-    const params = branch ? { projectKey, branch } : { projectKey };
+const fetchQualityGate = async (url, projectKey, token, branch, pullRequest) => {
+    const params = { projectKey };
+    if (pullRequest) {
+        params.pullRequest = pullRequest;
+        console.log(`Fetching quality gate for Pull Request #${pullRequest}`);
+    }
+    else if (branch) {
+        params.branch = branch;
+        console.log(`Fetching quality gate for branch: ${branch}`);
+    }
     const apiUrl = `${url}/api/qualitygates/project_status`;
     console.log(`Fetching quality gate status from: ${apiUrl}`);
     console.log(`Parameters:`, JSON.stringify(params, null, 2));
