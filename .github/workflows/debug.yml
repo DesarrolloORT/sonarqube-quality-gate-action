@@ -1,20 +1,21 @@
 name: Debug SonarQube Quality Gate
 
 on:
+  pull_request:
+    types: [opened, synchronize, reopened]
   workflow_dispatch:
     inputs:
       sonar-host-url:
         description: 'SonarQube server URL'
-        required: true
-        default: 'https://your-sonar-server.com'
+        required: false
       sonar-project-key:
         description: 'SonarQube project key'
-        required: true
+        required: false
       branch:
         description: 'Branch name (optional, usado si no hay PR)'
         required: false
       pr-number:
-        description: 'Pull Request number (opcional, tiene prioridad sobre branch)'
+        description: 'Pull Request number (opcional, prioridad sobre branch)'
         required: false
 
 jobs:
@@ -22,27 +23,46 @@ jobs:
     name: Debug Quality Gate
     runs-on: ubuntu-latest
 
+    # Variables “fuente de verdad”. Preferí repo Variables (Settings → Variables)
     env:
-      SONAR_HOST_URL: ${{ github.event.inputs.sonar-host-url }}
-      SONAR_PROJECT_KEY: ${{ github.event.inputs.sonar-project-key }}
-      PR_NUMBER: ${{ github.event.inputs['pr-number'] || '' }}
-      BRANCH_NAME: ${{ github.event.inputs.branch || '' }}
+      SONAR_HOST_URL: ${{ inputs.sonar-host-url || secrets.SONAR_HOST_URL }}
+      SONAR_PROJECT_KEY: ${{ inputs.sonar-project-key || vars.SONAR_PROJECT_KEY || 'tu-project-key' }}
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      # Contexto PR/branch sin warnings en ambos eventos
+      PR_NUMBER: ${{ inputs.pr-number || github.event.pull_request.number || '' }}
+      BRANCH_NAME: ${{ inputs.branch || github.head_ref || github.ref_name || '' }}
 
     steps:
+      - name: Check required params
+        run: |
+          if [ -z "${SONAR_HOST_URL}" ]; then
+            echo "Falta SONAR_HOST_URL (secrets o input)."
+            exit 1
+          fi
+          if [ -z "${SONAR_PROJECT_KEY}" ]; then
+            echo "Falta SONAR_PROJECT_KEY (vars, input o literal)."
+            exit 1
+          fi
+          if [ -z "${SONAR_TOKEN}" ]; then
+            echo "Falta SONAR_TOKEN (secrets). Si el PR viene de fork, los secrets no están disponibles."
+            exit 1
+          fi
+
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Si tu Action local (./) soporta parámetros pullRequest/branch, pásalos aquí también
       - name: Test SonarQube Quality Gate Action (with debug)
         id: quality-gate
         uses: ./
         with:
           sonar-host-url: ${{ env.SONAR_HOST_URL }}
           sonar-project-key: ${{ env.SONAR_PROJECT_KEY }}
-          sonar-token: ${{ secrets.SONAR_TOKEN }}
+          sonar-token: ${{ env.SONAR_TOKEN }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          # si tu acción interna soporta 'branch' o 'pullRequest', podrías pasarle ambos:
-          branch: ${{ env.BRANCH_NAME }}
           pullRequest: ${{ env.PR_NUMBER }}
+          branch: ${{ env.BRANCH_NAME }}
           disable-pr-comment: 'true'
           fail-on-quality-gate-error: 'false'
 
@@ -69,7 +89,7 @@ jobs:
 
           echo "Testing with Bearer token..."
           RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
-            -H "Authorization: Bearer ${{ secrets.SONAR_TOKEN }}" \
+            -H "Authorization: Bearer $SONAR_TOKEN" \
             "$BASE_URL")
 
           HTTP_STATUS=$(echo "$RESPONSE" | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
@@ -81,7 +101,7 @@ jobs:
           if [ "$HTTP_STATUS" != "200" ]; then
             echo "Testing with Basic auth..."
             RESPONSE2=$(curl -s -w "HTTPSTATUS:%{http_code}" \
-              -u "${{ secrets.SONAR_TOKEN }}:" \
+              -u "${SONAR_TOKEN}:" \
               "$BASE_URL")
 
             HTTP_STATUS2=$(echo "$RESPONSE2" | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
