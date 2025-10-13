@@ -13,15 +13,6 @@ on:
       branch:
         description: 'Branch name (optional)'
         required: false
-  pull_request:
-    branches:
-      - main
-      - master
-      - develop
-  push:
-    branches-ignore:
-      - main
-      - master
 
 jobs:
   debug-quality-gate:
@@ -36,14 +27,14 @@ jobs:
         id: quality-gate
         uses: ./
         with:
-          sonar-host-url: ${{ github.event.inputs.sonar-host-url}}
+          sonar-host-url: ${{ github.event.inputs.sonar-host-url }}
           sonar-project-key: ${{ github.event.inputs.sonar-project-key }}
           sonar-token: ${{ secrets.SONAR_TOKEN }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           branch: ${{ github.event.inputs.branch }}
-          pull-request: ${{ github.event.pull_request.number }}
-          disable-pr-comment: 'false' # Enable PR comments
-          fail-on-quality-gate-error: 'false' # Don't fail the workflow for debugging
+          pull-request: ''
+          disable-pr-comment: 'true'
+          fail-on-quality-gate-error: 'false'
 
       - name: Print Results
         run: |
@@ -55,26 +46,20 @@ jobs:
           echo "Testing API manually..."
           echo "Host: ${{ github.event.inputs.sonar-host-url }}"
           echo "Project: ${{ github.event.inputs.sonar-project-key }}"
-          echo "PR Number: ${{ github.event.pull_request.number }}"
-          echo "Branch: ${{ github.event.inputs.branch || github.head_ref }}"
+          echo "Branch: ${{ github.event.inputs.branch }}"
 
-          # Build API URL with PR or branch parameter
           BASE_URL="${{ github.event.inputs.sonar-host-url }}/api/qualitygates/project_status?projectKey=${{ github.event.inputs.sonar-project-key }}"
 
-          if [ -n "${{ github.event.pull_request.number }}" ]; then
-            API_URL="${BASE_URL}&pullRequest=${{ github.event.pull_request.number }}"
-            echo "Using Pull Request parameter"
-          elif [ -n "${{ github.event.inputs.branch || github.head_ref }}" ]; then
-            API_URL="${BASE_URL}&branch=${{ github.event.inputs.branch || github.head_ref }}"
-            echo "Using Branch parameter"
+          if [ -n "${{ github.event.inputs.branch }}" ]; then
+            API_URL="${BASE_URL}&branch=${{ github.event.inputs.branch }}"
+            echo "Using Branch parameter: ${{ github.event.inputs.branch }}"
           else
             API_URL="${BASE_URL}"
-            echo "Using default (main branch)"
+            echo "Using default branch"
           fi
 
           echo "API URL: ${API_URL}"
 
-          # Test with Bearer token
           echo "Testing with Bearer token..."
           RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
             -H "Authorization: Bearer ${{ secrets.SONAR_TOKEN }}" \
@@ -86,7 +71,6 @@ jobs:
           echo "Bearer token response status: $HTTP_STATUS"
           echo "Bearer token response body: $BODY"
 
-          # Test with Basic auth if Bearer fails
           if [ "$HTTP_STATUS" != "200" ]; then
             echo "Testing with Basic auth..."
             RESPONSE2=$(curl -s -w "HTTPSTATUS:%{http_code}" \
