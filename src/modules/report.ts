@@ -41,11 +41,14 @@ export const buildReport = (
   hostURL: string,
   projectKey: string,
   context: Context,
-  branch?: string
+  branch?: string,
+  pullRequest?: string
 ): string => {
-  const projectURL = `${trimTrailingSlash(hostURL)}/dashboard?id=${projectKey}${
-    branch ? `&branch=${encodeURIComponent(branch)}` : ''
-  }`
+  // Build URL with pullRequest parameter if available
+  let projectURL = `${trimTrailingSlash(hostURL)}/dashboard?id=${projectKey}`
+  if (pullRequest) {
+    projectURL += `&pullRequest=${pullRequest}`
+  }
 
   const projectStatus = getStatusEmoji(result.projectStatus.status)
 
@@ -62,8 +65,11 @@ export const buildReport = (
   console.log(`Status: ${result.projectStatus.status}`)
   console.log(`Number of conditions: ${conditions.length}`)
 
+  // Display PR number in the report if available
+  const branchInfo = pullRequest ? `\n- **Pull Request**: #${pullRequest}` : ''
+
   return `### SonarQube Quality Gate Result
-- **Result**: ${projectStatus}${branch ? `\n- **Branch**: \`${branch}\`` : ''}
+- **Result**: ${projectStatus}${branchInfo}
 - Triggered by @${context.actor} on \`${context.eventName}\`
 
 | Metric | Status | Value | Error Threshold |

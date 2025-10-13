@@ -35408,7 +35408,7 @@ async function run() {
                 throw new Error('`inputs.github-token` is required for result comment creation.');
             }
             const octokit = github.getOctokit(inputs.githubToken);
-            const reportBody = (0, report_1.buildReport)(result, inputs.hostURL, inputs.projectKey, context, inputs.branch);
+            const reportBody = (0, report_1.buildReport)(result, inputs.hostURL, inputs.projectKey, context, inputs.branch, pullRequestNumber);
             console.log('Finding comment associated with the report...');
             const issueComment = await (0, main_1.findComment)({
                 token: inputs.githubToken,
@@ -35563,8 +35563,12 @@ const buildRow = (condition) => {
     ];
     return `|${rowValues.join('|')}|`;
 };
-const buildReport = (result, hostURL, projectKey, context, branch) => {
-    const projectURL = `${(0, utils_1.trimTrailingSlash)(hostURL)}/dashboard?id=${projectKey}${branch ? `&branch=${encodeURIComponent(branch)}` : ''}`;
+const buildReport = (result, hostURL, projectKey, context, branch, pullRequest) => {
+    // Build URL with pullRequest parameter if available
+    let projectURL = `${(0, utils_1.trimTrailingSlash)(hostURL)}/dashboard?id=${projectKey}`;
+    if (pullRequest) {
+        projectURL += `&pullRequest=${pullRequest}`;
+    }
     const projectStatus = (0, utils_1.getStatusEmoji)(result.projectStatus.status);
     // Handle case where conditions might be empty or missing
     const conditions = result.projectStatus.conditions || [];
@@ -35575,8 +35579,10 @@ const buildReport = (result, hostURL, projectKey, context, branch) => {
     console.log(`Building report for project ${projectKey}`);
     console.log(`Status: ${result.projectStatus.status}`);
     console.log(`Number of conditions: ${conditions.length}`);
+    // Display PR number in the report if available
+    const branchInfo = pullRequest ? `\n- **Pull Request**: #${pullRequest}` : '';
     return `### SonarQube Quality Gate Result
-- **Result**: ${projectStatus}${branch ? `\n- **Branch**: \`${branch}\`` : ''}
+- **Result**: ${projectStatus}${branchInfo}
 - Triggered by @${context.actor} on \`${context.eventName}\`
 
 | Metric | Status | Value | Error Threshold |

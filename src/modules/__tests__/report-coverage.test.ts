@@ -23,7 +23,6 @@ describe('report - additional coverage', () => {
         metricKey: 'duplicated_lines_density',
         comparator: 'GT',
         actualValue: '2.5'
-        // No errorThreshold to test the else if branch
       }
     ],
     ignoredConditions: false
@@ -41,23 +40,22 @@ describe('report - additional coverage', () => {
       mockContext
     )
 
-    // Should contain "(no threshold)" for the condition without errorThreshold
     expect(result).toContain('> (no threshold)')
   })
 
   it('should handle condition with neither comparator nor errorThreshold', () => {
-    const conditionWithoutBoth = {
-      status: 'OK',
-      metricKey: 'test_metric',
-      comparator: '', // Required field, set to empty
-      actualValue: '100'
-      // No errorThreshold
-    }
-
     const qualityGateWithoutBoth: QualityGate = {
       projectStatus: {
-        ...mockProjectStatus,
-        conditions: [conditionWithoutBoth]
+        status: 'ERROR',
+        conditions: [
+          {
+            status: 'ERROR',
+            metricKey: 'some_metric',
+            comparator: '',
+            actualValue: '50'
+          }
+        ],
+        ignoredConditions: false
       }
     }
 
@@ -68,25 +66,26 @@ describe('report - additional coverage', () => {
       mockContext
     )
 
-    // Should contain "N/A" for threshold when no comparator or errorThreshold
     expect(result).toContain('N/A')
   })
 
-  it('should build report with branch parameter in URL', () => {
+  it('should build report with pullRequest parameter in URL', () => {
     const result = buildReport(
       mockQualityGate,
       'https://sonar.example.com',
       'test-project',
       mockContext,
-      'feature/test'
+      undefined,
+      '228'
     )
 
     expect(result).toContain(
-      'https://sonar.example.com/dashboard?id=test-project&branch=feature%2Ftest'
+      'https://sonar.example.com/dashboard?id=test-project&pullRequest=228'
     )
+    expect(result).toContain('**Pull Request**: #228')
   })
 
-  it('should build report without branch parameter when branch is undefined', () => {
+  it('should build report without pullRequest when undefined', () => {
     const result = buildReport(
       mockQualityGate,
       'https://sonar.example.com',
@@ -97,22 +96,24 @@ describe('report - additional coverage', () => {
     expect(result).toContain(
       'https://sonar.example.com/dashboard?id=test-project'
     )
-    expect(result).not.toContain('&branch=')
+    expect(result).not.toContain('&pullRequest=')
+    expect(result).not.toContain('**Pull Request**')
   })
 
-  it('should build report without branch parameter when branch is empty string', () => {
+  it('should build report without pullRequest when empty string', () => {
     const result = buildReport(
       mockQualityGate,
       'https://sonar.example.com',
       'test-project',
       mockContext,
+      undefined,
       ''
     )
 
     expect(result).toContain(
       'https://sonar.example.com/dashboard?id=test-project'
     )
-    expect(result).not.toContain('&branch=')
+    expect(result).not.toContain('&pullRequest=')
   })
 
   it('should handle missing conditions and show "No metrics available"', () => {

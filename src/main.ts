@@ -76,7 +76,8 @@ export async function run(): Promise<void> {
         inputs.hostURL,
         inputs.projectKey,
         context,
-        inputs.branch
+        inputs.branch,
+        pullRequestNumber
       )
 
       console.log('Finding comment associated with the report...')

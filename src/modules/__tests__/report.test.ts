@@ -141,23 +141,24 @@ describe('buildReport', () => {
     expect(report).toBe(expectedReport)
   })
 
-  test('should build report with report link including branch parameter when branch is defined', () => {
+  test('should build report with pullRequest parameter in URL when provided', () => {
     timezone_mock.register('UTC')
     const hostURL = 'https://host-url.com/'
     const projectKey = 'project-key'
-    const branch = 'branch-name'
+    const pullRequest = '228'
 
     const report = buildReport(
       qualityGate,
       hostURL,
       projectKey,
       context,
-      branch
+      undefined,
+      pullRequest
     )
 
     const expectedReport = `### SonarQube Quality Gate Result
 - **Result**: :exclamation: Error
-- **Branch**: \`branch-name\`
+- **Pull Request**: #228
 - Triggered by @me on \`pull_request\`
 
 | Metric | Status | Value | Error Threshold |
@@ -173,7 +174,7 @@ describe('buildReport', () => {
 |New duplicated blocks|:white_check_mark: OK|0|> 0|
 |New minor violations|:white_check_mark: OK|0|> 0|
 
-[View on SonarQube](https://host-url.com/dashboard?id=project-key&branch=branch-name)
+[View on SonarQube](https://host-url.com/dashboard?id=project-key&pullRequest=228)
 ###### _updated: 1/1/1970, 08:31:00 (UTC+0)_`
     expect(report).toBe(expectedReport)
   })
