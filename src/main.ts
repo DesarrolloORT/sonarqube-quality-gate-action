@@ -12,6 +12,18 @@ import { trimTrailingSlash } from './modules/utils'
  */
 export async function run(): Promise<void> {
   try {
+    const { context } = github
+    const isPR = context.eventName === 'pull_request'
+
+    // Get branch input or auto-detect from PR context
+    let branchInput = core.getInput('branch')
+
+    // If no branch specified and this is a PR, use the head branch
+    if (!branchInput && isPR && context.payload.pull_request) {
+      branchInput = context.payload.pull_request.head.ref
+      console.log(`Auto-detected branch from PR: ${branchInput}`)
+    }
+
     const inputs: ActionInputs = {
       hostURL: trimTrailingSlash(core.getInput('sonar-host-url')),
       projectKey: core.getInput('sonar-project-key'),
@@ -19,7 +31,7 @@ export async function run(): Promise<void> {
       commentDisabled: core.getInput('disable-pr-comment') === 'true',
       failOnQualityGateError:
         core.getInput('fail-on-quality-gate-error') === 'true',
-      branch: core.getInput('branch'),
+      branch: branchInput,
       githubToken: core.getInput('github-token')
     }
 
@@ -39,8 +51,6 @@ export async function run(): Promise<void> {
     core.setOutput('project-status', result.projectStatus.status)
     core.setOutput('quality-gate-result', JSON.stringify(result))
 
-    const isPR = github.context.eventName === 'pull_request'
-
     if (isPR && !inputs.commentDisabled) {
       if (!inputs.githubToken) {
         throw new Error(
@@ -48,7 +58,6 @@ export async function run(): Promise<void> {
         )
       }
 
-      const { context } = github
       const octokit = github.getOctokit(inputs.githubToken)
 
       const reportBody = buildReport(

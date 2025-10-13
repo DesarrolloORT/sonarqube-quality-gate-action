@@ -34,7 +34,14 @@ describe('main - coverage improvements', () => {
     eventName: 'pull_request',
     repo: { owner: 'test-owner', repo: 'test-repo' },
     issue: { number: 123 },
-    actor: 'test-user'
+    actor: 'test-user',
+    payload: {
+      pull_request: {
+        head: {
+          ref: 'feature-branch'
+        }
+      }
+    }
   }
 
   const mockQualityGateResult = {
@@ -213,6 +220,56 @@ describe('main - coverage improvements', () => {
       'test-project',
       'test-token',
       'main'
+    )
+  })
+
+  it('should auto-detect branch from PR when branch input is empty', async () => {
+    mockCore.getInput.mockImplementation((name: string) => {
+      const inputs: Record<string, string> = {
+        'sonar-host-url': 'https://sonar.example.com/',
+        'sonar-project-key': 'test-project',
+        'sonar-token': 'test-token',
+        'disable-pr-comment': 'false',
+        'fail-on-quality-gate-error': 'false',
+        branch: '', // Empty branch input
+        'github-token': 'github-token'
+      }
+      return inputs[name] || ''
+    })
+
+    await run()
+
+    // Should use the branch from PR context (feature-branch)
+    expect(mockFetchQualityGate).toHaveBeenCalledWith(
+      'https://sonar.example.com',
+      'test-project',
+      'test-token',
+      'feature-branch' // Auto-detected from context.payload.pull_request.head.ref
+    )
+  })
+
+  it('should use manual branch input over auto-detection', async () => {
+    mockCore.getInput.mockImplementation((name: string) => {
+      const inputs: Record<string, string> = {
+        'sonar-host-url': 'https://sonar.example.com/',
+        'sonar-project-key': 'test-project',
+        'sonar-token': 'test-token',
+        'disable-pr-comment': 'false',
+        'fail-on-quality-gate-error': 'false',
+        branch: 'manual-branch', // Explicit branch input
+        'github-token': 'github-token'
+      }
+      return inputs[name] || ''
+    })
+
+    await run()
+
+    // Should use the manual branch input
+    expect(mockFetchQualityGate).toHaveBeenCalledWith(
+      'https://sonar.example.com',
+      'test-project',
+      'test-token',
+      'manual-branch' // Manual input takes precedence
     )
   })
 })
