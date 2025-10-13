@@ -63,9 +63,23 @@ export const fetchQualityGate = async (
   url: string,
   projectKey: string,
   token: string,
-  branch?: string
+  branch?: string,
+  pullRequest?: string
 ): Promise<QualityGate> => {
-  const params = branch ? { projectKey, branch } : { projectKey }
+  // Priority: pullRequest > branch > default (main)
+  const params: { projectKey: string; branch?: string; pullRequest?: string } =
+    {
+      projectKey
+    }
+
+  if (pullRequest) {
+    params.pullRequest = pullRequest
+    console.log(`Using Pull Request parameter: ${pullRequest}`)
+  } else if (branch) {
+    params.branch = branch
+    console.log(`Using branch parameter: ${branch}`)
+  }
+
   const apiUrl = `${url}/api/qualitygates/project_status`
 
   console.log(`Fetching quality gate status from: ${apiUrl}`)

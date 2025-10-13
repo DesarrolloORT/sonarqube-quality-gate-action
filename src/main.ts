@@ -17,11 +17,21 @@ export async function run(): Promise<void> {
 
     // Get branch input or auto-detect from PR context
     let branchInput = core.getInput('branch')
+    let pullRequestNumber: string | undefined
 
-    // If no branch specified and this is a PR, use the head branch
-    if (!branchInput && isPR && context.payload.pull_request) {
-      branchInput = context.payload.pull_request.head.ref
-      console.log(`Auto-detected branch from PR: ${branchInput}`)
+    // If this is a PR, get the PR number for SonarQube
+    if (isPR && context.payload.pull_request) {
+      const prNumber = context.payload.pull_request.number
+      if (prNumber) {
+        pullRequestNumber = prNumber.toString()
+        console.log(`Detected Pull Request number: ${pullRequestNumber}`)
+      }
+
+      // Also auto-detect branch if not provided
+      if (!branchInput) {
+        branchInput = context.payload.pull_request.head.ref
+        console.log(`Auto-detected branch from PR: ${branchInput}`)
+      }
     }
 
     const inputs: ActionInputs = {
@@ -39,7 +49,8 @@ export async function run(): Promise<void> {
       inputs.hostURL,
       inputs.projectKey,
       inputs.token,
-      inputs.branch
+      inputs.branch,
+      pullRequestNumber
     )
 
     console.log('Quality gate fetch completed successfully')

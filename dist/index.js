@@ -35374,10 +35374,19 @@ async function run() {
         const isPR = context.eventName === 'pull_request';
         // Get branch input or auto-detect from PR context
         let branchInput = core.getInput('branch');
-        // If no branch specified and this is a PR, use the head branch
-        if (!branchInput && isPR && context.payload.pull_request) {
-            branchInput = context.payload.pull_request.head.ref;
-            console.log(`Auto-detected branch from PR: ${branchInput}`);
+        let pullRequestNumber;
+        // If this is a PR, get the PR number for SonarQube
+        if (isPR && context.payload.pull_request) {
+            const prNumber = context.payload.pull_request.number;
+            if (prNumber) {
+                pullRequestNumber = prNumber.toString();
+                console.log(`Detected Pull Request number: ${pullRequestNumber}`);
+            }
+            // Also auto-detect branch if not provided
+            if (!branchInput) {
+                branchInput = context.payload.pull_request.head.ref;
+                console.log(`Auto-detected branch from PR: ${branchInput}`);
+            }
         }
         const inputs = {
             hostURL: (0, utils_1.trimTrailingSlash)(core.getInput('sonar-host-url')),
@@ -35388,7 +35397,7 @@ async function run() {
             branch: branchInput,
             githubToken: core.getInput('github-token')
         };
-        const result = await (0, sonarqube_api_1.fetchQualityGate)(inputs.hostURL, inputs.projectKey, inputs.token, inputs.branch);
+        const result = await (0, sonarqube_api_1.fetchQualityGate)(inputs.hostURL, inputs.projectKey, inputs.token, inputs.branch, pullRequestNumber);
         console.log('Quality gate fetch completed successfully');
         console.log(`Project status: ${result.projectStatus.status}`);
         console.log(`Number of conditions: ${result.projectStatus.conditions?.length || 0}`);
@@ -35661,8 +35670,19 @@ const validateQualityGateResponse = (data) => {
     console.log(`Validated response: status=${data.projectStatus.status}, conditions=${data.projectStatus.conditions.length}, caycStatus=${data.projectStatus.caycStatus ?? 'N/A'}`);
     return data;
 };
-const fetchQualityGate = async (url, projectKey, token, branch) => {
-    const params = branch ? { projectKey, branch } : { projectKey };
+const fetchQualityGate = async (url, projectKey, token, branch, pullRequest) => {
+    // Priority: pullRequest > branch > default (main)
+    const params = {
+        projectKey
+    };
+    if (pullRequest) {
+        params.pullRequest = pullRequest;
+        console.log(`Using Pull Request parameter: ${pullRequest}`);
+    }
+    else if (branch) {
+        params.branch = branch;
+        console.log(`Using branch parameter: ${branch}`);
+    }
     const apiUrl = `${url}/api/qualitygates/project_status`;
     console.log(`Fetching quality gate status from: ${apiUrl}`);
     console.log(`Parameters:`, JSON.stringify(params, null, 2));

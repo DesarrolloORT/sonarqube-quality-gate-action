@@ -37,6 +37,7 @@ describe('main - coverage improvements', () => {
     actor: 'test-user',
     payload: {
       pull_request: {
+        number: 123,
         head: {
           ref: 'feature-branch'
         }
@@ -219,7 +220,8 @@ describe('main - coverage improvements', () => {
       'https://sonar.example.com', // Should be trimmed
       'test-project',
       'test-token',
-      'main'
+      'main',
+      '123' // Pull Request number
     )
   })
 
@@ -244,7 +246,8 @@ describe('main - coverage improvements', () => {
       'https://sonar.example.com',
       'test-project',
       'test-token',
-      'feature-branch' // Auto-detected from context.payload.pull_request.head.ref
+      'feature-branch', // Auto-detected from context.payload.pull_request.head.ref
+      '123' // Pull Request number
     )
   })
 
@@ -269,7 +272,8 @@ describe('main - coverage improvements', () => {
       'https://sonar.example.com',
       'test-project',
       'test-token',
-      'manual-branch' // Manual input takes precedence
+      'manual-branch', // Manual input takes precedence
+      '123' // Pull Request number
     )
   })
 })
