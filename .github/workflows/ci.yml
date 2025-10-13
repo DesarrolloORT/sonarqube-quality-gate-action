@@ -57,8 +57,14 @@ jobs:
         id: test-action
         uses: ./
         with:
-          milliseconds: 2000
+          sonar-host-url: "https://sonarcloud.io"
+          sonar-project-key: "test-project"
+          sonar-token: "fake-token-for-testing"
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          fail-on-quality-gate-error: "false"
 
       - name: Print Output
         id: output
-        run: echo "${{ steps.test-action.outputs.time }}"
+        run: |
+          echo "Project Status: ${{ steps.test-action.outputs.project-status }}"
+          echo "Quality Gate: ${{ steps.test-action.outputs.quality-gate-result }}"

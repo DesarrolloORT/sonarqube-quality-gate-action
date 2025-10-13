@@ -4,15 +4,18 @@ on:
   workflow_dispatch:
     inputs:
       sonar-host-url:
-        description: 'SonarQube server URL'
+        description: "SonarQube server URL"
         required: true
-        default: 'https://your-sonar-server.com'
+        default: "https://your-sonar-server.com"
       sonar-project-key:
-        description: 'SonarQube project key'
+        description: "SonarQube project key"
         required: true
       branch:
-        description: 'Branch name (optional)'
+        description: "Branch name (optional)"
         required: false
+
+permissions:
+  contents: read
 
 jobs:
   debug-quality-gate:
@@ -32,9 +35,9 @@ jobs:
           sonar-token: ${{ secrets.SONAR_TOKEN }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           branch: ${{ github.event.inputs.branch }}
-          pull-request: ''
-          disable-pr-comment: 'true'
-          fail-on-quality-gate-error: 'false'
+          pull-request: ""
+          disable-pr-comment: "true"
+          fail-on-quality-gate-error: "false"
 
       - name: Print Results
         run: |
@@ -65,8 +68,8 @@ jobs:
             -H "Authorization: Bearer ${{ secrets.SONAR_TOKEN }}" \
             "${API_URL}")
 
-          HTTP_STATUS=$(echo $RESPONSE | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
-          BODY=$(echo $RESPONSE | sed -e 's/HTTPSTATUS\:.*//g')
+          HTTP_STATUS=$(echo "$RESPONSE" | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+          BODY=$(echo "$RESPONSE" | sed -e 's/HTTPSTATUS\:.*//g')
 
           echo "Bearer token response status: $HTTP_STATUS"
           echo "Bearer token response body: $BODY"
@@ -77,8 +80,8 @@ jobs:
               -u "${{ secrets.SONAR_TOKEN }}:" \
               "${API_URL}")
 
-            HTTP_STATUS2=$(echo $RESPONSE2 | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
-            BODY2=$(echo $RESPONSE2 | sed -e 's/HTTPSTATUS\:.*//g')
+            HTTP_STATUS2=$(echo "$RESPONSE2" | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+            BODY2=$(echo "$RESPONSE2" | sed -e 's/HTTPSTATUS\:.*//g')
 
             echo "Basic auth response status: $HTTP_STATUS2"
             echo "Basic auth response body: $BODY2"
