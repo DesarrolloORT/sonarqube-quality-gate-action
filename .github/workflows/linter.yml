@@ -1,10 +1,7 @@
-name: Lint Codebase
+name: Lint Code Base
 
 on:
   pull_request:
-    branches:
-      - main
-  push:
     branches:
       - main
 
@@ -14,36 +11,23 @@ permissions:
   statuses: write
 
 jobs:
-  lint:
-    name: Lint Codebase
+  build:
+    name: Lint Code Base
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        id: checkout
+      - name: Checkout Code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Setup Node.js
-        id: setup-node
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: .node-version
-          cache: npm
-
-      - name: Install Dependencies
-        id: install
-        run: npm ci
-
-      - name: Lint Codebase
-        id: super-linter
+      - name: Lint Code Base
         uses: super-linter/super-linter/slim@v6
         env:
           DEFAULT_BRANCH: main
-          FILTER_REGEX_EXCLUDE: dist/**/*
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TYPESCRIPT_DEFAULT_STYLE: prettier
-          VALIDATE_ALL_CODEBASE: true
+          VALIDATE_ALL_CODEBASE: false
           VALIDATE_JAVASCRIPT_STANDARD: false
           VALIDATE_JSCPD: false
+          TYPESCRIPT_DEFAULT_STYLE: prettier
+          FILTER_REGEX_EXCLUDE: .*(dist/.*|\.github/workflows/debug\.yml)

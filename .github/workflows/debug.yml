@@ -4,14 +4,14 @@ on:
   workflow_dispatch:
     inputs:
       sonar-host-url:
-        description: "SonarQube server URL"
+        description: 'SonarQube server URL'
         required: true
-        default: "https://your-sonar-server.com"
+        default: 'https://your-sonar-server.com'
       sonar-project-key:
-        description: "SonarQube project key"
+        description: 'SonarQube project key'
         required: true
       branch:
-        description: "Branch name (optional)"
+        description: 'Branch name (optional)'
         required: false
 
 permissions:
@@ -35,9 +35,9 @@ jobs:
           sonar-token: ${{ secrets.SONAR_TOKEN }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           branch: ${{ github.event.inputs.branch }}
-          pull-request: ""
-          disable-pr-comment: "true"
-          fail-on-quality-gate-error: "false"
+          pull-request: ''
+          disable-pr-comment: 'true'
+          fail-on-quality-gate-error: 'false'
 
       - name: Print Results
         run: |
@@ -68,21 +68,23 @@ jobs:
             -H "Authorization: Bearer ${{ secrets.SONAR_TOKEN }}" \
             "${API_URL}")
 
-          HTTP_STATUS=$(echo "$RESPONSE" | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
-          BODY=$(echo "$RESPONSE" | sed -e 's/HTTPSTATUS\:.*//g')
+          # Use parameter expansion instead of sed (shellcheck SC2001)
+          HTTP_STATUS="${RESPONSE##*HTTPSTATUS:}"
+          BODY="${RESPONSE%HTTPSTATUS:*}"
 
-          echo "Bearer token response status: $HTTP_STATUS"
-          echo "Bearer token response body: $BODY"
+          echo "Bearer token response status: ${HTTP_STATUS}"
+          echo "Bearer token response body: ${BODY}"
 
-          if [ "$HTTP_STATUS" != "200" ]; then
+          if [ "${HTTP_STATUS}" != "200" ]; then
             echo "Testing with Basic auth..."
             RESPONSE2=$(curl -s -w "HTTPSTATUS:%{http_code}" \
               -u "${{ secrets.SONAR_TOKEN }}:" \
               "${API_URL}")
 
-            HTTP_STATUS2=$(echo "$RESPONSE2" | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
-            BODY2=$(echo "$RESPONSE2" | sed -e 's/HTTPSTATUS\:.*//g')
+            # Use parameter expansion instead of sed
+            HTTP_STATUS2="${RESPONSE2##*HTTPSTATUS:}"
+            BODY2="${RESPONSE2%HTTPSTATUS:*}"
 
-            echo "Basic auth response status: $HTTP_STATUS2"
-            echo "Basic auth response body: $BODY2"
+            echo "Basic auth response status: ${HTTP_STATUS2}"
+            echo "Basic auth response body: ${BODY2}"
           fi
