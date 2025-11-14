@@ -67,7 +67,9 @@ jobs:
 
 ### Automatic Retries for Incomplete Analysis ⏳
 
-The action now includes **automatic retry logic** to handle timing issues when SonarQube is still processing the analysis. If the results are not yet available, the action will:
+The action now includes **automatic retry logic** to handle timing issues when
+SonarQube is still processing the analysis. If the results are not yet
+available, the action will:
 
 1. Detect when the analysis is incomplete (all values are N/A)
 2. Automatically wait and retry with exponential backoff
@@ -78,7 +80,9 @@ The action now includes **automatic retry logic** to handle timing issues when S
    - 4th attempt: wait 8 seconds
    - 5th attempt: wait 16 seconds
 
-This eliminates the need for manual retry runs or sleep steps in most cases. The action will automatically get the results once SonarQube has finished processing.
+This eliminates the need for manual retry runs or sleep steps in most cases. The
+action will automatically get the results once SonarQube has finished
+processing.
 
 #### Example (No sleep step needed)
 
@@ -112,7 +116,8 @@ jobs:
 
 ### Manual Wait Step (Optional)
 
-If you prefer to add an explicit wait before the action runs, you can still do so:
+If you prefer to add an explicit wait before the action runs, you can still do
+so:
 
 ```yml
 name: Check quality gate result on pull request

@@ -35676,6 +35676,146 @@ const validateQualityGateResponse = (data) => {
     console.log(`Validated response: status=${data.projectStatus.status}, conditions=${data.projectStatus.conditions.length}, caycStatus=${data.projectStatus.caycStatus ?? 'N/A'}`);
     return data;
 };
+/**
+ * Sleep for a specified number of milliseconds
+ */
+const sleep = async (ms) => {
+    return new Promise(resolve => setTimeout(resolve, ms));
+};
+/**
+ * Check if the response indicates an incomplete analysis (N/A status)
+ * An analysis is incomplete if:
+ * - Status is "NONE" (SonarQube still processing, no QG result yet)
+ * - ALL conditions have N/A values (quality gate not yet evaluated)
+ * - Status is UNKNOWN or missing
+ */
+const isIncompleteAnalysis = (data) => {
+    if (!data.projectStatus || !data.projectStatus.status) {
+        return true;
+    }
+    // If status is NONE, SonarQube is still processing - retry
+    if (data.projectStatus.status === 'NONE') {
+        console.log('Status is NONE - SonarQube analysis may still be processing');
+        return true;
+    }
+    // Check if all conditions show incomplete status
+    const conditions = data.projectStatus.conditions || [];
+    if (conditions.length === 0) {
+        // Only consider it complete if we have a real status (OK, ERROR, etc)
+        // NONE with empty conditions means still processing
+        return false;
+    }
+    // If even ONE condition has a real status (not UNKNOWN), the analysis is complete
+    const hasAnyRealStatus = conditions.some(condition => condition.status && condition.status !== 'UNKNOWN');
+    // If we have at least one real status, analysis is complete
+    if (hasAnyRealStatus) {
+        return false;
+    }
+    // If all conditions are UNKNOWN and ALL have N/A values, it's incomplete
+    const allNAWithUnknownStatus = conditions.every(condition => condition.status === 'UNKNOWN' && condition.actualValue === 'N/A');
+    return allNAWithUnknownStatus;
+};
+/**
+ * Fetch quality gate with retry logic for incomplete analyses
+ * Uses exponential backoff to wait for SonarQube to process the analysis
+ */
+const fetchQualityGateWithRetry = async (apiUrl, params, token, maxRetries = 5, initialDelayMs = 2000) => {
+    let lastError = null;
+    let lastResponse = null;
+    let authenticationError = null;
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            // Try with Bearer token first (newer SonarQube versions)
+            const response = await axios_1.default.get(apiUrl, {
+                params,
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            });
+            console.log(`API Response Status (attempt ${attempt}): ${response.status}`);
+            console.log(`API Response Data:`, JSON.stringify(response.data, null, 2));
+            lastResponse = validateQualityGateResponse(response.data);
+            // Check if analysis is complete
+            if (!isIncompleteAnalysis(lastResponse)) {
+                console.log(`Analysis is complete on attempt ${attempt}, returning results`);
+                return lastResponse;
+            }
+            if (attempt < maxRetries) {
+                const delayMs = initialDelayMs * Math.pow(2, attempt - 1);
+                console.warn(`Analysis appears incomplete (all values are N/A), retrying in ${delayMs}ms (attempt ${attempt}/${maxRetries})...`);
+                await sleep(delayMs);
+            }
+        }
+        catch (error) {
+            if (error instanceof axios_1.AxiosError) {
+                if (attempt === 1) {
+                    console.log(`Bearer token failed with status ${error.response?.status}, trying basic auth...`);
+                }
+                // Fallback to basic auth for older versions
+                try {
+                    const response = await axios_1.default.get(apiUrl, {
+                        params,
+                        auth: {
+                            username: token,
+                            password: ''
+                        }
+                    });
+                    console.log(`API Response Status (basic auth, attempt ${attempt}): ${response.status}`);
+                    console.log(`API Response Data:`, JSON.stringify(response.data, null, 2));
+                    lastResponse = validateQualityGateResponse(response.data);
+                    // Check if analysis is complete
+                    if (!isIncompleteAnalysis(lastResponse)) {
+                        console.log(`Analysis is complete on attempt ${attempt}, returning results`);
+                        return lastResponse;
+                    }
+                    if (attempt < maxRetries) {
+                        const delayMs = initialDelayMs * Math.pow(2, attempt - 1);
+                        console.warn(`Analysis appears incomplete (all values are N/A), retrying in ${delayMs}ms (attempt ${attempt}/${maxRetries})...`);
+                        await sleep(delayMs);
+                    }
+                }
+                catch (basicAuthError) {
+                    if (basicAuthError instanceof axios_1.AxiosError) {
+                        console.error(`Attempt ${attempt}: Both authentication methods failed.`);
+                        console.error(`Bearer token error: ${error.response?.status} - ${error.response?.statusText}`);
+                        console.error(`Basic auth error: ${basicAuthError.response?.status} - ${basicAuthError.response?.statusText}`);
+                        // If we have consistent authentication errors, stop retrying
+                        if (error.response?.status &&
+                            [401, 403, 404].includes(error.response.status)) {
+                            authenticationError = new Error(`Failed to fetch quality gate status. Bearer auth: ${error.response?.status}, Basic auth: ${basicAuthError.response?.status}. Check your token and project key.`);
+                            throw authenticationError;
+                        }
+                        lastError = basicAuthError instanceof Error ? basicAuthError : error;
+                    }
+                    else {
+                        // Non-AxiosError in basic auth fallback - throw immediately
+                        throw basicAuthError;
+                    }
+                    if (attempt < maxRetries) {
+                        const delayMs = initialDelayMs * Math.pow(2, attempt - 1);
+                        console.log(`Retrying in ${delayMs}ms (attempt ${attempt}/${maxRetries})...`);
+                        await sleep(delayMs);
+                    }
+                }
+            }
+            else {
+                throw error;
+            }
+        }
+    }
+    // If we got here, return the last valid response or throw an error
+    if (authenticationError) {
+        throw authenticationError;
+    }
+    if (lastResponse) {
+        console.warn('Max retries reached. Returning incomplete analysis. Status may show N/A values.');
+        return lastResponse;
+    }
+    if (lastError) {
+        throw lastError;
+    }
+    throw new Error('Failed to fetch quality gate status after maximum retries.');
+};
 const fetchQualityGate = async (url, projectKey, token, branch, pullRequest) => {
     // Priority: pullRequest > branch > default (main)
     const params = {
@@ -35692,47 +35832,7 @@ const fetchQualityGate = async (url, projectKey, token, branch, pullRequest) => 
     const apiUrl = `${url}/api/qualitygates/project_status`;
     console.log(`Fetching quality gate status from: ${apiUrl}`);
     console.log(`Parameters:`, JSON.stringify(params, null, 2));
-    try {
-        // Try with Bearer token first (newer SonarQube versions)
-        const response = await axios_1.default.get(apiUrl, {
-            params,
-            headers: {
-                Authorization: `Bearer ${token}`
-            }
-        });
-        console.log(`API Response Status: ${response.status}`);
-        console.log(`API Response Data:`, JSON.stringify(response.data, null, 2));
-        return validateQualityGateResponse(response.data);
-    }
-    catch (error) {
-        if (error instanceof axios_1.AxiosError) {
-            console.log(`Bearer token failed with status ${error.response?.status}, trying basic auth...`);
-            // Fallback to basic auth for older versions
-            try {
-                const response = await axios_1.default.get(apiUrl, {
-                    params,
-                    auth: {
-                        username: token,
-                        password: ''
-                    }
-                });
-                console.log(`API Response Status (basic auth): ${response.status}`);
-                console.log(`API Response Data:`, JSON.stringify(response.data, null, 2));
-                return validateQualityGateResponse(response.data);
-            }
-            catch (basicAuthError) {
-                if (basicAuthError instanceof axios_1.AxiosError) {
-                    console.error(`Both authentication methods failed.`);
-                    console.error(`Bearer token error: ${error.response?.status} - ${error.response?.statusText}`);
-                    console.error(`Basic auth error: ${basicAuthError.response?.status} - ${basicAuthError.response?.statusText}`);
-                    console.error(`Response data:`, basicAuthError.response?.data);
-                    throw new Error(`Failed to fetch quality gate status. Bearer auth: ${error.response?.status}, Basic auth: ${basicAuthError.response?.status}. Check your token and project key.`);
-                }
-                throw basicAuthError;
-            }
-        }
-        throw error;
-    }
+    return fetchQualityGateWithRetry(apiUrl, params, token);
 };
 exports.fetchQualityGate = fetchQualityGate;
 

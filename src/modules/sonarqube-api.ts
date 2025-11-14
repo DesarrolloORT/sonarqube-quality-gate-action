@@ -62,7 +62,7 @@ const validateQualityGateResponse = (data: any): QualityGate => {
 /**
  * Sleep for a specified number of milliseconds
  */
-const sleep = (ms: number): Promise<void> => {
+const sleep = async (ms: number): Promise<void> => {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
@@ -119,8 +119,8 @@ const fetchQualityGateWithRetry = async (
   apiUrl: string,
   params: { projectKey: string; branch?: string; pullRequest?: string },
   token: string,
-  maxRetries: number = 5,
-  initialDelayMs: number = 2000
+  maxRetries = 5,
+  initialDelayMs = 2000
 ): Promise<QualityGate> => {
   let lastError: Error | null = null
   let lastResponse: QualityGate | null = null
@@ -136,11 +136,10 @@ const fetchQualityGateWithRetry = async (
         }
       })
 
-      console.log(`API Response Status (attempt ${attempt}): ${response.status}`)
       console.log(
-        `API Response Data:`,
-        JSON.stringify(response.data, null, 2)
+        `API Response Status (attempt ${attempt}): ${response.status}`
       )
+      console.log(`API Response Data:`, JSON.stringify(response.data, null, 2))
 
       lastResponse = validateQualityGateResponse(response.data)
 
@@ -233,7 +232,9 @@ const fetchQualityGateWithRetry = async (
 
           if (attempt < maxRetries) {
             const delayMs = initialDelayMs * Math.pow(2, attempt - 1)
-            console.log(`Retrying in ${delayMs}ms (attempt ${attempt}/${maxRetries})...`)
+            console.log(
+              `Retrying in ${delayMs}ms (attempt ${attempt}/${maxRetries})...`
+            )
             await sleep(delayMs)
           }
         }
@@ -259,9 +260,7 @@ const fetchQualityGateWithRetry = async (
     throw lastError
   }
 
-  throw new Error(
-    'Failed to fetch quality gate status after maximum retries.'
-  )
+  throw new Error('Failed to fetch quality gate status after maximum retries.')
 }
 
 export const fetchQualityGate = async (
