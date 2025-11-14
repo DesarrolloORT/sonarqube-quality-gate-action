@@ -65,10 +65,22 @@ jobs:
           echo "${{ steps.quality-gate-check.outputs.quality-gate-result }}"
 ```
 
-### Check the results immediately after the scan
+### Automatic Retries for Incomplete Analysis ⏳
 
-Sometimes the results will not be available right away after the scan has
-finished. Make sure to add a defer step before retrieving the scan results.
+The action now includes **automatic retry logic** to handle timing issues when SonarQube is still processing the analysis. If the results are not yet available, the action will:
+
+1. Detect when the analysis is incomplete (all values are N/A)
+2. Automatically wait and retry with exponential backoff
+3. Maximum of 5 retries with progressive delays:
+   - 1st attempt: immediate
+   - 2nd attempt: wait 2 seconds
+   - 3rd attempt: wait 4 seconds
+   - 4th attempt: wait 8 seconds
+   - 5th attempt: wait 16 seconds
+
+This eliminates the need for manual retry runs or sleep steps in most cases. The action will automatically get the results once SonarQube has finished processing.
+
+#### Example (No sleep step needed)
 
 ```yml
 name: Check quality gate result on pull request
@@ -82,7 +94,39 @@ jobs:
     steps:
       - uses: some/scan-actions@v2 # Step for scanning your project
 
-      - name: Wait for the quality gate result
+      # The action now handles waiting automatically! ✨
+      - uses: DesarrolloORT/sonarqube-quality-gate-action@v2
+        id: quality-gate-check
+        with:
+          sonar-project-key: ${{ secrets.SONAR_PROJECT_KEY }}
+          sonar-host-url: ${{ secrets.SONAR_HOST_URL }}
+          sonar-token: ${{ secrets.SONAR_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          branch: main # Optional input
+
+      - name: Output result
+        run: |
+          echo "${{ steps.quality-gate-check.outputs.project-status }}"
+          echo "${{ steps.quality-gate-check.outputs.quality-gate-result }}"
+```
+
+### Manual Wait Step (Optional)
+
+If you prefer to add an explicit wait before the action runs, you can still do so:
+
+```yml
+name: Check quality gate result on pull request
+
+on:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: some/scan-actions@v2 # Step for scanning your project
+
+      - name: Wait for the quality gate result (optional)
         run: sleep 5
 
       - uses: DesarrolloORT/sonarqube-quality-gate-action@v2
