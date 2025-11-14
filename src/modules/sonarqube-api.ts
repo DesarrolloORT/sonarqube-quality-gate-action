@@ -68,18 +68,28 @@ const sleep = (ms: number): Promise<void> => {
 
 /**
  * Check if the response indicates an incomplete analysis (N/A status)
- * An analysis is incomplete if ALL conditions have N/A values, suggesting SonarQube is still processing.
- * However, if some conditions have real status values (OK, ERROR, WARNING), it's a complete analysis even if actualValue is N/A.
+ * An analysis is incomplete if:
+ * - Status is "NONE" (SonarQube still processing, no QG result yet)
+ * - ALL conditions have N/A values (quality gate not yet evaluated)
+ * - Status is UNKNOWN or missing
  */
 const isIncompleteAnalysis = (data: QualityGate): boolean => {
   if (!data.projectStatus || !data.projectStatus.status) {
     return true
   }
 
+  // If status is NONE, SonarQube is still processing - retry
+  if (data.projectStatus.status === 'NONE') {
+    console.log('Status is NONE - SonarQube analysis may still be processing')
+    return true
+  }
+
   // Check if all conditions show incomplete status
   const conditions = data.projectStatus.conditions || []
   if (conditions.length === 0) {
-    return false // Empty conditions is valid, not necessarily incomplete
+    // Only consider it complete if we have a real status (OK, ERROR, etc)
+    // NONE with empty conditions means still processing
+    return false
   }
 
   // If even ONE condition has a real status (not UNKNOWN), the analysis is complete

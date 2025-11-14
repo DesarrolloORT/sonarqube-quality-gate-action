@@ -83,6 +83,29 @@ describe('fetchQualityGate', () => {
     expect(result.projectStatus.conditions.length).toBe(0)
   })
 
+  it('should retry when analysis returns NONE status', async () => {
+    // First call returns NONE, second returns complete
+    const incompleteNoneResponse = {
+      data: {
+        projectStatus: {
+          status: 'NONE',
+          conditions: [],
+          caycStatus: 'over-compliant'
+        }
+      },
+      status: 200
+    }
+
+    ;(axios.get as jest.Mock)
+      .mockResolvedValueOnce(incompleteNoneResponse)
+      .mockResolvedValueOnce(mockValidResponse)
+
+    const result = await fetchQualityGate('https://example.com', 'key', 'token')
+
+    expect(axios.get).toHaveBeenCalledTimes(2)
+    expect(result.projectStatus.status).toBe('OK')
+  })
+
   it('should use pullRequest parameter when provided', async () => {
     ;(axios.get as jest.Mock).mockResolvedValue(mockValidResponse)
 
